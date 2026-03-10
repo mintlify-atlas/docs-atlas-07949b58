@@ -1,0 +1,373 @@
+---
+title: 'Returns API'
+description: 'API endpoints for managing customer and supplier returns'
+---
+
+## Overview
+
+The Returns API allows you to process customer returns (refunds) and supplier returns (returning defective items to suppliers). Returns automatically adjust inventory levels and maintain detailed transaction history.
+
+## Models
+
+### Devolucion (Customer Return)
+
+Customer return from a sale transaction.
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the return
+</ResponseField>
+
+<ResponseField name="venta" type="integer" nullable>
+  ID of the original sale transaction
+</ResponseField>
+
+<ResponseField name="cliente" type="integer">
+  ID of the client making the return
+</ResponseField>
+
+<ResponseField name="fecha" type="datetime">
+  Timestamp when the return was created (auto-generated)
+</ResponseField>
+
+<ResponseField name="motivo" type="string" nullable>
+  Reason for the return
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  ID of the user who processed the return
+</ResponseField>
+
+<ResponseField name="total_devuelto" type="decimal">
+  Total amount refunded (sum of all line items)
+</ResponseField>
+
+### DetalleDevolucion (Customer Return Line Item)
+
+Individual items returned in a customer return.
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the line item
+</ResponseField>
+
+<ResponseField name="devolucion" type="integer">
+  ID of the parent return transaction
+</ResponseField>
+
+<ResponseField name="producto" type="integer">
+  ID of the product being returned
+</ResponseField>
+
+<ResponseField name="cantidad" type="integer">
+  Quantity of items being returned
+</ResponseField>
+
+<ResponseField name="precio_unitario" type="decimal">
+  Price per unit at the time of original sale
+</ResponseField>
+
+<ResponseField name="subtotal" type="decimal" computed>
+  Calculated as `cantidad * precio_unitario` (read-only property)
+</ResponseField>
+
+### DevolucionCompra (Supplier Return)
+
+Return of items to a supplier (e.g., defective products).
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the supplier return
+</ResponseField>
+
+<ResponseField name="compra" type="integer">
+  ID of the original purchase transaction
+</ResponseField>
+
+<ResponseField name="proveedor" type="integer" nullable>
+  ID of the supplier receiving the return
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  ID of the user who processed the return
+</ResponseField>
+
+<ResponseField name="motivo" type="string" nullable>
+  Reason for returning items to supplier
+</ResponseField>
+
+<ResponseField name="fecha" type="datetime">
+  Timestamp when the return was created (defaults to current time)
+</ResponseField>
+
+<ResponseField name="total_devuelto" type="decimal">
+  Total value of items returned to supplier
+</ResponseField>
+
+### DetalleDevolucionCompra (Supplier Return Line Item)
+
+Individual items returned to a supplier.
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the line item
+</ResponseField>
+
+<ResponseField name="devolucion" type="integer">
+  ID of the parent supplier return transaction
+</ResponseField>
+
+<ResponseField name="producto" type="integer">
+  ID of the product being returned to supplier
+</ResponseField>
+
+<ResponseField name="cantidad" type="integer">
+  Quantity of items being returned
+</ResponseField>
+
+<ResponseField name="precio_unitario" type="decimal">
+  Price per unit at the time of original purchase
+</ResponseField>
+
+## Customer Return Endpoints
+
+### Create Customer Return
+
+Process a customer return and refund.
+
+```http
+POST /devoluciones/crear/
+```
+
+<ParamField body="venta_id" type="integer" required>
+  ID of the original sale transaction
+</ParamField>
+
+<ParamField body="cliente_id" type="integer" required>
+  ID of the client making the return
+</ParamField>
+
+<ParamField body="motivo" type="string">
+  Reason for the return
+</ParamField>
+
+<ParamField body="productos" type="array" required>
+  Array of products being returned, each containing:
+  - `producto_id` (integer): Product ID
+  - `cantidad` (integer): Quantity to return
+  - `precio_unitario` (decimal): Original unit price
+</ParamField>
+
+**Example Request:**
+
+```bash
+curl -X POST https://your-domain.com/devoluciones/crear/ \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: your-csrf-token" \
+  -d '{
+    "venta_id": 123,
+    "cliente_id": 45,
+    "motivo": "Producto defectuoso",
+    "productos": [
+      {
+        "producto_id": 10,
+        "cantidad": 2,
+        "precio_unitario": "25.00"
+      }
+    ]
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": 67,
+  "venta": 123,
+  "cliente": 45,
+  "fecha": "2024-03-10T14:30:00Z",
+  "motivo": "Producto defectuoso",
+  "usuario": 5,
+  "total_devuelto": "50.00",
+  "detalles": [
+    {
+      "id": 89,
+      "producto": 10,
+      "cantidad": 2,
+      "precio_unitario": "25.00",
+      "subtotal": "50.00"
+    }
+  ]
+}
+```
+
+### List Customer Returns
+
+Retrieve all customer returns for the current user.
+
+```http
+GET /devoluciones/lista/
+```
+
+**Query Parameters:**
+
+<ParamField query="fecha_desde" type="date">
+  Filter returns from this date (YYYY-MM-DD)
+</ParamField>
+
+<ParamField query="fecha_hasta" type="date">
+  Filter returns until this date (YYYY-MM-DD)
+</ParamField>
+
+<ParamField query="cliente" type="integer">
+  Filter by client ID
+</ParamField>
+
+### Get Customer Return Details
+
+Retrieve details of a specific customer return.
+
+```http
+GET /devoluciones/detalle/{id}/
+```
+
+## Supplier Return Endpoints
+
+### Create Supplier Return
+
+Return defective or incorrect items to a supplier.
+
+```http
+POST /devoluciones/compras/crear/
+```
+
+<ParamField body="compra_id" type="integer" required>
+  ID of the original purchase transaction
+</ParamField>
+
+<ParamField body="proveedor_id" type="integer">
+  ID of the supplier
+</ParamField>
+
+<ParamField body="motivo" type="string">
+  Reason for returning items (e.g., "Productos defectuosos", "Error en pedido")
+</ParamField>
+
+<ParamField body="productos" type="array" required>
+  Array of products being returned to supplier
+</ParamField>
+
+**Example Request:**
+
+```bash
+curl -X POST https://your-domain.com/devoluciones/compras/crear/ \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: your-csrf-token" \
+  -d '{
+    "compra_id": 456,
+    "proveedor_id": 12,
+    "motivo": "Productos dañados en envío",
+    "productos": [
+      {
+        "producto_id": 15,
+        "cantidad": 5,
+        "precio_unitario": "30.00"
+      }
+    ]
+  }'
+```
+
+### List Supplier Returns
+
+Retrieve all supplier returns for the current user.
+
+```http
+GET /devoluciones/compras/lista/
+```
+
+## Stock Impact
+
+Returns automatically adjust product inventory:
+
+**Customer Returns (Devoluciones):**
+- When a customer return is created, stock is **increased** by the returned quantity
+- Products are available for resale
+
+**Supplier Returns (DevolucionCompra):**
+- When items are returned to a supplier, stock is **decreased** by the returned quantity
+- Products are removed from available inventory
+
+<Warning>
+  Returns cannot be edited after creation. If a return was entered incorrectly, delete it and create a new one.
+</Warning>
+
+## Permissions
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="user-shield">
+    - Create customer returns
+    - Create supplier returns
+    - View all returns
+    - Delete returns
+  </Card>
+  
+  <Card title="Vendedor" icon="user">
+    - Create customer returns
+    - View returns they created
+    - Cannot create supplier returns
+    - Cannot delete returns
+  </Card>
+</CardGroup>
+
+## Business Rules
+
+1. **Customer Returns:**
+   - Must reference a valid sale transaction
+   - Cannot return more items than were originally sold
+   - Stock is automatically restored upon return
+   - Total refund amount is calculated from line items
+
+2. **Supplier Returns:**
+   - Must reference a valid purchase transaction
+   - Reduces available inventory
+   - Typically used for defective items or shipping errors
+
+3. **Deletion Protection:**
+   - Returns use `SET_NULL` for sale references (allows sale deletion)
+   - Returns use `PROTECT` for client and product references (prevents deletion)
+   - Supplier returns use `CASCADE` for purchase (deleted if purchase is deleted)
+
+## Related Endpoints
+
+- [Sales API](/api/sales) - Original sale transactions for customer returns
+- [Purchases API](/api/purchases) - Original purchase transactions for supplier returns
+- [Products API](/api/products) - Product inventory affected by returns
+
+## Example: Complete Return Workflow
+
+<Steps>
+  <Step title="Customer Contacts You">
+    Customer reports a defective product from sale #123
+  </Step>
+  
+  <Step title="Verify Original Sale">
+    ```bash
+    GET /ventas/detalle/123/
+    ```
+    Verify the product and quantity in the original sale
+  </Step>
+  
+  <Step title="Process Return">
+    ```bash
+    POST /devoluciones/crear/
+    ```
+    Create the return with product details and reason
+  </Step>
+  
+  <Step title="Verify Stock Update">
+    ```bash
+    GET /productos/{product_id}/
+    ```
+    Confirm product stock was restored
+  </Step>
+  
+  <Step title="Issue Refund">
+    Process the financial refund to the customer based on `total_devuelto`
+  </Step>
+</Steps>

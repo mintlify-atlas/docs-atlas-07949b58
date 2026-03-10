@@ -137,6 +137,49 @@ During the sales process:
   If you don't have a barcode scanner, you can manually type the barcode number in the search field.
 </Tip>
 
+### Generating Barcode Labels
+
+Inventario includes a built-in barcode label generator for printing physical barcode stickers:
+
+<Steps>
+  <Step title="Access Barcode Generator">
+    Navigate to **Configuration** → **Generate Barcodes** (admin only)
+  </Step>
+  
+  <Step title="Enter Barcode Numbers">
+    Enter one or more barcode numbers separated by commas:
+    ```
+    7501234567890, 7501234567891, 7501234567892
+    ```
+  </Step>
+  
+  <Step title="Generate PDF">
+    Click **Generate PDF** to create a printable document with Code128 barcodes
+  </Step>
+  
+  <Step title="Print Labels">
+    Print the PDF and cut out individual barcode labels to attach to your products
+  </Step>
+</Steps>
+
+**Barcode Generation Features:**
+- Generates Code128 format barcodes
+- Creates printable PDF with multiple barcodes
+- Includes human-readable numbers below each barcode
+- Optimized size for standard label sheets (15mm height, 0.5mm bar width)
+- Preview barcodes before printing
+
+<Note>
+  The barcode generator is only available to admin users. Access it from **Configuration** → **Generate Barcodes** or at `/configuracion/generar-codigos/`
+</Note>
+
+**Supported Barcode Formats:**
+While the generator creates Code128 barcodes, you can scan any standard format including:
+- EAN-13 (most common retail format)
+- UPC-A (North American retail)
+- Code128 (flexible alphanumeric)
+- EAN-8 (short format)
+
 ## Stock Management
 
 ### Automatic Stock Updates
