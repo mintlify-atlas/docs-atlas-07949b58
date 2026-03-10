@@ -1,0 +1,123 @@
+{
+  "projectType": "saas",
+  "projectName": "Inventario",
+  "projectDescription": "A comprehensive inventory management system for businesses to track products, sales, purchases, clients, and financial reports.",
+  "theme": "linden",
+  "primaryColor": "#2563eb",
+  "lightColor": "#60a5fa",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/products",
+              "features/sales",
+              "features/purchases",
+              "features/clients",
+              "features/suppliers",
+              "features/reports",
+              "features/returns"
+            ]
+          },
+          {
+            "group": "User Management",
+            "pages": [
+              "users/authentication",
+              "users/roles",
+              "users/profile"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/integrations",
+              "advanced/notifications",
+              "advanced/ai-features"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/products",
+              "api/sales",
+              "api/purchases",
+              "api/clients",
+              "api/suppliers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Administration",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "admin/deployment",
+              "admin/configuration",
+              "admin/environment-variables"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "admin/security",
+              "admin/database"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Product inventory management with barcode support",
+    "Sales tracking with VAT calculation",
+    "Purchase order management",
+    "Client and supplier management",
+    "Financial reports and analytics",
+    "Multi-user support with role-based access",
+    "Google OAuth integration",
+    "Email notifications",
+    "AI-powered features via OpenAI",
+    "SMS notifications via Twilio"
+  ],
+  "publicApiSurface": [
+    "Producto model - Product management",
+    "Venta model - Sales transactions",
+    "Compra model - Purchase orders",
+    "Cliente model - Client management",
+    "Proveedor model - Supplier management",
+    "Usuario model - User accounts",
+    "DetalleVenta model - Sale line items",
+    "CompraDetalle model - Purchase line items",
+    "IngresoExtra model - Additional income",
+    "Gasto model - Expenses",
+    "Activo model - Assets/Fixed assets",
+    "PasswordResetCode model - Password recovery",
+    "EmailVerification model - Email verification"
+  ]
+}
