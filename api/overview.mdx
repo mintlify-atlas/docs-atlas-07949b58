@@ -1,0 +1,208 @@
+---
+title: 'API Overview'
+description: 'Introduction to the Inventario API architecture and conventions'
+---
+
+## Introduction
+
+The Inventario API is a RESTful web service built with Django that provides inventory management capabilities including products, sales, purchases, clients, and suppliers management.
+
+## Base URL
+
+All API requests should be made to your Inventario installation's base URL:
+
+```
+http://your-domain.com/
+```
+
+For local development:
+
+```
+http://localhost:8000/
+```
+
+## API Architecture
+
+The Inventario API follows Django's URL routing structure with the following main endpoints:
+
+- `/productos/` - Product management
+- `/ventas/` - Sales and transactions
+- `/compras/` - Purchase orders
+- `/clientes/` - Client management
+- `/proveedores/` - Supplier management
+- `/usuarios/` - User management
+- `/reportes/` - Reports and analytics
+- `/configuracion/` - System configuration
+
+## Request Format
+
+The API accepts both form-encoded data and JSON payloads depending on the endpoint:
+
+### Form-Encoded (Standard Django Views)
+
+```bash
+curl -X POST http://localhost:8000/productos/nuevo/ \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "nombre=Laptop&precio=1500.00&stock=10"
+```
+
+### JSON (AJAX/API Endpoints)
+
+```bash
+curl -X POST http://localhost:8000/ventas/api/buscar-producto/ \
+  -H "Content-Type: application/json" \
+  -d '{"codigo_barras": "1234567890"}'
+```
+
+## Response Format
+
+### HTML Responses
+
+Standard Django views return rendered HTML templates with server-side rendering.
+
+### JSON Responses
+
+API endpoints (typically under `/api/` paths) return JSON responses:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "nombre": "Laptop",
+    "precio": "1500.00"
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": "Product not found"
+}
+```
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes:
+
+<ResponseField name="200" type="OK">
+  Request successful
+</ResponseField>
+
+<ResponseField name="201" type="Created">
+  Resource created successfully
+</ResponseField>
+
+<ResponseField name="302" type="Found">
+  Redirect (common in Django form submissions)
+</ResponseField>
+
+<ResponseField name="400" type="Bad Request">
+  Invalid request parameters or validation error
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Authentication required
+</ResponseField>
+
+<ResponseField name="403" type="Forbidden">
+  Insufficient permissions (e.g., vendedor accessing admin-only endpoint)
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Resource not found
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  Server error
+</ResponseField>
+
+## Common Error Codes
+
+| Error Code | Description |
+|------------|-------------|
+| `CSRF_TOKEN_MISSING` | CSRF token not provided |
+| `INVALID_CREDENTIALS` | Authentication failed |
+| `PERMISSION_DENIED` | User lacks required role/permissions |
+| `VALIDATION_ERROR` | Form validation failed |
+| `RESOURCE_NOT_FOUND` | Requested resource doesn't exist |
+| `PROTECTED_ERROR` | Cannot delete resource with dependencies |
+
+## Pagination
+
+List endpoints support pagination with query parameters:
+
+<ParamField query="page" type="integer" default="1">
+  Page number to retrieve
+</ParamField>
+
+Example:
+```bash
+curl http://localhost:8000/productos/?page=2
+```
+
+Pagination response includes:
+- `has_next` - Boolean indicating more pages
+- `has_previous` - Boolean indicating previous pages
+- `number` - Current page number
+- `num_pages` - Total number of pages
+
+## Filtering and Sorting
+
+Many list endpoints support filtering and sorting:
+
+### Filtering
+
+```bash
+# Filter products by category
+curl http://localhost:8000/productos/?categoria=Electronics
+```
+
+### Sorting
+
+```bash
+# Sort products by name
+curl http://localhost:8000/productos/?orden=nombre
+
+# Sort by price (descending)
+curl http://localhost:8000/productos/?orden=-precio
+```
+
+## Date/Time Format
+
+All timestamps use ISO 8601 format in America/Bogota timezone:
+
+```
+2024-03-15T14:30:00-05:00
+```
+
+## Decimal Fields
+
+Monetary values use Decimal type with 2 decimal places:
+
+```json
+{
+  "precio": "1500.00",
+  "total": "3250.50"
+}
+```
+
+## User Roles and Permissions
+
+Inventario implements role-based access control:
+
+### Admin Role
+- Full CRUD operations on all resources
+- Can create/manage vendedor users
+- Access to all reports and analytics
+
+### Vendedor Role
+- Read-only access to products
+- Can create and view sales
+- Limited access to reports
+- Cannot modify products, purchases, or system settings
+
+See [Authentication](/api/authentication) for details on role enforcement.

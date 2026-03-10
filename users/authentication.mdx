@@ -1,0 +1,313 @@
+---
+title: 'Authentication'
+description: 'Learn how users authenticate and manage their credentials in Inventario'
+icon: 'lock'
+---
+
+## Overview
+
+Inventario provides a secure authentication system with multiple login methods, email verification, and password recovery features. The system is built on Django's authentication framework with custom extensions.
+
+## Login Methods
+
+### Username/Password Authentication
+
+Users can log in using either their username or email address with their password.
+
+<CodeGroup>
+```python applications/cuentas/views.py
+def login_usuario(request):
+    if request.method == 'POST':
+        # Allow login with email or username
+        data = request.POST.copy()
+        username_input = data.get('username', '')
+        User = get_user_model()
+        user_obj = None
+
+        if '@' in username_input:
+            try:
+                user_obj = User.objects.get(email__iexact=username_input)
+                data['username'] = user_obj.username
+            except User.DoesNotExist:
+                user_obj = None
+
+        form = LoginForm(request, data=data)
+        username = data.get('username')
+        password = request.POST.get('password')
+```
+</CodeGroup>
+
+<Info>
+**Flexible Login**: Users can authenticate using either their username or email address. The system automatically detects email addresses by checking for the `@` symbol.
+</Info>
+
+### Google OAuth Integration
+
+Inventario supports Google OAuth for streamlined authentication using `django-allauth`.
+
+<Steps>
+  <Step title="Configure OAuth Settings">
+    OAuth settings are configured in `settings.py`:
+    ```python
+    SOCIALACCOUNT_PROVIDERS = {
+        'google': {
+            'SCOPE': ['profile', 'email'],
+            'AUTH_PARAMS': {'access_type': 'online'},
+            'VERIFIED_EMAIL': True,
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Auto-capture Profile Photos">
+    When users log in with Google, their profile photo is automatically saved:
+    ```python
+    social = SocialAccount.objects.get(user=request.user, provider='google')
+    foto_url = social.extra_data.get('picture')
+    if foto_url and not request.user.foto_perfil:
+        # Download and save profile photo
+    ```
+  </Step>
+  
+  <Step title="Redirect After Login">
+    Users are redirected based on their role:
+    - **Superusers**: `/admin/`
+    - **Admin**: `/dashboard/`
+    - **Vendedor**: Sales list view
+  </Step>
+</Steps>
+
+<Warning>
+Google OAuth requires proper configuration of `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables.
+</Warning>
+
+## Email Verification
+
+### Registration Flow
+
+New users must verify their email address before account activation.
+
+<CodeGroup>
+```python applications/cuentas/models.py
+class EmailVerification(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=64))
+        if not self.pk:
+            self.expires_at = timezone.now() + timedelta(hours=24)
+        super().save(*args, **kwargs)
+
+    def is_valid(self):
+        return timezone.now() < self.expires_at
+```
+</CodeGroup>
+
+<Steps>
+  <Step title="User Registration">
+    User submits registration form with email, username, and password.
+  </Step>
+  
+  <Step title="Email Verification Sent">
+    A verification email with a unique 64-character token is sent. The token is valid for **24 hours**.
+  </Step>
+  
+  <Step title="User Clicks Verification Link">
+    User account is created in the database with `is_active=False`.
+  </Step>
+  
+  <Step title="Admin Activation">
+    An administrator must manually activate the account before the user can log in.
+  </Step>
+</Steps>
+
+<Note>
+**Two-Step Verification**: The system implements a two-step verification process:
+1. Email verification (automated)
+2. Admin approval (manual)
+
+This ensures only legitimate users gain access to the system.
+</Note>
+
+## Password Reset
+
+### 6-Digit Code System
+
+Inventario uses a secure 6-digit code system for password recovery instead of traditional reset links.
+
+<CodeGroup>
+```python applications/cuentas/models.py
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = str(random.randint(100000, 999999))
+        if not self.pk: 
+            self.expires_at = timezone.now() + timedelta(minutes=10)
+        super().save(*args, **kwargs)
+
+    def is_valid(self):
+        return timezone.now() < self.expires_at
+```
+</CodeGroup>
+
+### Password Reset Flow
+
+<Steps>
+  <Step title="Request Reset Code">
+    User submits their email address at `password_reset_request` view:
+    ```python
+    PasswordResetCode.objects.filter(user=user).delete()
+    reset_code = PasswordResetCode.objects.create(user=user)
+    ```
+  </Step>
+  
+  <Step title="Receive 6-Digit Code">
+    A random 6-digit code is generated and emailed. The code **expires in 10 minutes**.
+  </Step>
+  
+  <Step title="Verify Code">
+    User enters the code at `password_reset_verify` view. The system validates:
+    - Code matches the user's record
+    - Code has not expired
+    ```python
+    reset_code = PasswordResetCode.objects.get(user=user, code=code_input)
+    if reset_code.is_valid():
+        request.session['reset_code_id'] = reset_code.id
+    ```
+  </Step>
+  
+  <Step title="Set New Password">
+    User creates a new password with validation:
+    - Minimum 8 characters
+    - Cannot be a common password
+    - Must contain numbers and letters
+  </Step>
+</Steps>
+
+<Warning>
+**Security Features**:
+- Old reset codes are automatically deleted when a new request is made
+- Codes expire after 10 minutes
+- Session-based verification prevents unauthorized access
+- All passwords are validated against Django's password validators
+</Warning>
+
+## Session Management
+
+### Session Configuration
+
+Session security is configured in `settings.py`:
+
+```python inventario/settings.py
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+SESSION_COOKIE_SECURE = not DEBUG  # True in production
+CSRF_COOKIE_SECURE = not DEBUG
+```
+
+### Session Security Features
+
+<CardGroup cols={2}>
+  <Card title="Secure Cookies" icon="cookie">
+    Session cookies are marked as secure in production to prevent transmission over HTTP.
+  </Card>
+  
+  <Card title="CSRF Protection" icon="shield-halved">
+    All forms include CSRF tokens to prevent cross-site request forgery attacks.
+  </Card>
+  
+  <Card title="Password Rehashing" icon="key">
+    When users change passwords, sessions are maintained using `update_session_auth_hash`.
+  </Card>
+  
+  <Card title="Cache Control" icon="ban">
+    Sensitive pages use the `@no_cache` decorator to prevent browser caching.
+  </Card>
+</CardGroup>
+
+### Account Status Validation
+
+Before allowing login, the system checks account status:
+
+```python applications/cuentas/views.py:241-244
+try:
+    if user_obj is None:
+        user_obj = User.objects.get(username=username)
+    if not user_obj.is_active:
+        messages.error(request, '❌ La cuenta no ha sido activada por el administrador.')
+        return render(request, 'login.html', {'form': form})
+except User.DoesNotExist:
+    user_obj = None
+```
+
+<Info>
+Inactive accounts receive a clear error message directing them to contact an administrator.
+</Info>
+
+## Password Validators
+
+Custom password validators ensure strong passwords:
+
+```python inventario/settings.py
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'applications.cuentas.validators.LongitudMinimaValidator'},
+    {'NAME': 'applications.cuentas.validators.ContraseñaComunValidator'},
+    {'NAME': 'applications.cuentas.validators.ContraseñaNumericaValidator'},
+]
+```
+
+<Accordion title="Validator Details">
+  - **LongitudMinimaValidator**: Ensures minimum 8 characters
+  - **ContraseñaComunValidator**: Prevents common passwords
+  - **ContraseñaNumericaValidator**: Requires a mix of numbers and letters
+</Accordion>
+
+## Email Service
+
+Inventario uses **Resend** for email delivery:
+
+```python
+resend.api_key = settings.RESEND_API_KEY
+
+def enviar_email(destinatario, asunto, html):
+    resend.Emails.send({
+        "from": settings.DEFAULT_FROM_EMAIL,
+        "to": [destinatario],
+        "subject": asunto,
+        "html": html,
+    })
+```
+
+<Tip>
+Configure `RESEND_API_KEY` and `DEFAULT_FROM_EMAIL` environment variables for email functionality.
+</Tip>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="User Roles" icon="user-shield" href="/users/roles">
+    Learn about Admin and Vendedor roles and permissions
+  </Card>
+  
+  <Card title="Profile Management" icon="user-pen" href="/users/profile">
+    Manage user profiles and settings
+  </Card>
+  
+  <Card title="Security" icon="lock" href="/admin/security">
+    Advanced security configuration
+  </Card>
+  
+  <Card title="Environment Variables" icon="gear" href="/admin/environment-variables">
+    Configure authentication environment variables
+  </Card>
+</CardGroup>

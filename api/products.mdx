@@ -1,0 +1,311 @@
+---
+title: 'Products API'
+description: 'Manage products in your inventory'
+---
+
+## Product Model
+
+The `Producto` model represents items in your inventory with the following fields:
+
+<ResponseField name="id" type="integer">
+  Unique product identifier (auto-generated)
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to the owner User (admin who created the product)
+</ResponseField>
+
+<ResponseField name="codigo_de_barras" type="string">
+  Barcode identifier (unique per user, max 50 characters)
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Product name (max 100 characters, required)
+</ResponseField>
+
+<ResponseField name="categoria" type="string">
+  Product category (max 50 characters, optional)
+</ResponseField>
+
+<ResponseField name="precio_compra" type="decimal">
+  Purchase cost (10 digits, 2 decimals, default: 0.00)
+</ResponseField>
+
+<ResponseField name="precio" type="decimal">
+  Selling price (10 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="stock" type="integer">
+  Available quantity (positive integer, default: 0)
+</ResponseField>
+
+<ResponseField name="fecha_creacion" type="datetime">
+  Timestamp when product was created (auto-generated)
+</ResponseField>
+
+<ResponseField name="fecha_actualizacion" type="datetime">
+  Timestamp of last update (auto-updated)
+</ResponseField>
+
+## List Products
+
+<Note>
+  Requires authentication. Returns products owned by the authenticated user (admin) or their creator (vendedor).
+</Note>
+
+```bash
+curl -X GET http://localhost:8000/productos/ \
+  -H "Cookie: sessionid=<your-session>"
+```
+
+### Query Parameters
+
+<ParamField query="categoria" type="string">
+  Filter products by category (case-insensitive exact match)
+</ParamField>
+
+<ParamField query="orden" type="string" default="nombre">
+  Sort field. Options: `nombre`, `precio`, `stock`, `categoria`, `-precio` (descending)
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination (7 items per page)
+</ParamField>
+
+### Example: Filter and Sort
+
+```bash
+curl "http://localhost:8000/productos/?categoria=Electronics&orden=-precio&page=1"
+```
+
+### Response
+
+Returns rendered HTML template with paginated product list. See `products_lista.html` template.
+
+## Create Product
+
+<Warning>
+  Requires authentication and **admin role**. Vendedor users cannot create products.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/productos/nuevo/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "nombre=Laptop Dell XPS 15" \
+  -d "codigo_de_barras=1234567890" \
+  -d "categoria=Electronics" \
+  -d "precio_compra=1200.00" \
+  -d "precio=1500.00" \
+  -d "stock=10"
+```
+
+### Request Parameters
+
+<ParamField body="nombre" type="string" required>
+  Product name (max 100 characters)
+</ParamField>
+
+<ParamField body="codigo_de_barras" type="string">
+  Barcode (must be unique per user, max 50 characters)
+</ParamField>
+
+<ParamField body="categoria" type="string">
+  Product category (max 50 characters)
+</ParamField>
+
+<ParamField body="precio_compra" type="decimal" default="0.00">
+  Purchase cost (e.g., "1200.00")
+</ParamField>
+
+<ParamField body="precio" type="decimal">
+  Selling price (e.g., "1500.00")
+</ParamField>
+
+<ParamField body="stock" type="integer" default="0">
+  Initial stock quantity
+</ParamField>
+
+### Response
+
+**Success (HTTP 302):**
+- Redirects to `/productos/`
+- Flash message: "Producto agregado correctamente."
+
+**Validation Error (HTTP 200):**
+- Re-renders form with error messages
+- Flash message: "Revisa los campos marcados en el formulario."
+
+**Permission Denied (HTTP 403):**
+- Redirects to error page (vendedor users)
+
+### Validation Rules
+
+- `nombre` is required
+- `codigo_de_barras` must be unique within user's products (constraint: `unique_together=('codigo_de_barras', 'usuario')`)
+- `precio_compra` and `precio` must be non-negative decimals
+- `stock` must be non-negative integer
+
+## Update Product
+
+<Warning>
+  Requires authentication and **admin role**. Only the product owner can update.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/productos/editar/5/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Laptop Dell XPS 15 (Updated)" \
+  -d "precio=1450.00" \
+  -d "stock=8"
+```
+
+### URL Parameters
+
+<ParamField path="id" type="integer" required>
+  Product ID to update
+</ParamField>
+
+### Request Parameters
+
+Same as [Create Product](#create-product) - all fields are editable.
+
+### Response
+
+**Success (HTTP 302):**
+- Redirects to `/productos/`
+- Flash message: "Producto actualizado correctamente."
+
+**Not Found (HTTP 404):**
+- Product doesn't exist or doesn't belong to authenticated user
+
+**Validation Error (HTTP 200):**
+- Re-renders form with error messages
+
+## Delete Product
+
+<Warning>
+  Requires authentication and **admin role**. Cannot delete products referenced in sales (PROTECT constraint).
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/productos/eliminar/5/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+### URL Parameters
+
+<ParamField path="id" type="integer" required>
+  Product ID to delete
+</ParamField>
+
+### Response
+
+**Success (HTTP 302):**
+- Product deleted
+- Redirects to `/productos/`
+- Flash message: "Producto eliminado correctamente."
+
+**Protected Error (HTTP 302):**
+- Cannot delete due to foreign key constraint (product has sales)
+- Redirects to `/productos/`
+- Error message: "No se puede eliminar el producto '{nombre}' porque está relacionado con una venta. Para eliminar este producto, primero debes eliminar la(s) venta(s) asociada(s)."
+
+**Not Found (HTTP 404):**
+- Product doesn't exist or doesn't belong to user
+
+### GET Request
+
+Accessing the delete URL via GET shows confirmation page:
+
+```bash
+curl http://localhost:8000/productos/eliminar/5/
+```
+
+Renders `producto_confirmar_eliminar.html` template.
+
+## Business Logic
+
+### Stock Management
+
+Product stock is automatically decremented when:
+- Sale created: `producto.stock -= cantidad`
+- Sale detail updated: `producto.stock -= (new_cantidad - old_cantidad)`
+
+Stock is restored when:
+- Sale deleted: `producto.stock += cantidad`
+- Sale detail deleted: `producto.stock += cantidad`
+
+See [Sales API](/api/sales) for details.
+
+### Purchase Integration
+
+When products are purchased:
+- Stock incremented: `producto.stock += cantidad_comprada`
+- Purchase price updated: `producto.precio_compra = precio_compra_detalle`
+- Optionally, selling price updated: `producto.precio = precio_venta_detalle`
+
+See [Purchases API](/api/purchases) for details.
+
+### Multi-Tenancy
+
+Products are isolated per user:
+- Admin users see only their own products
+- Vendedor users see products owned by their `creado_por` admin
+- Enforced at database level: `usuario` foreign key
+- Enforced in views: `Producto.objects.filter(usuario=request.user)`
+
+### Barcode Uniqueness
+
+The `unique_together` constraint allows:
+- Same barcode for different users (multi-tenant isolation)
+- Different products with unique barcodes per user
+
+Example:
+```python
+# User A can have:
+Producto(codigo_de_barras='123', usuario=user_a)  # OK
+
+# User B can also have:
+Producto(codigo_de_barras='123', usuario=user_b)  # OK
+
+# But User A cannot have duplicate:
+Producto(codigo_de_barras='123', usuario=user_a)  # ERROR: Duplicate
+```
+
+## Example Workflow
+
+### Create Product with Stock
+
+```bash
+# 1. Login
+curl -c cookies.txt -X POST http://localhost:8000/login/ \
+  -d "username=admin&password=mypass"
+
+# 2. Create product
+curl -b cookies.txt -X POST http://localhost:8000/productos/nuevo/ \
+  -H "X-CSRFToken: $(get_csrf_token)" \
+  -d "nombre=iPhone 14" \
+  -d "codigo_de_barras=APP-IPH14-001" \
+  -d "categoria=Smartphones" \
+  -d "precio_compra=800.00" \
+  -d "precio=999.00" \
+  -d "stock=5"
+
+# 3. Update stock
+curl -b cookies.txt -X POST http://localhost:8000/productos/editar/1/ \
+  -H "X-CSRFToken: $(get_csrf_token)" \
+  -d "stock=8"  # Stock increased to 8
+
+# 4. View products filtered by category
+curl -b cookies.txt "http://localhost:8000/productos/?categoria=Smartphones"
+```
+
+## Related Endpoints
+
+- [Sales API](/api/sales) - Product selection in sales
+- [Purchases API](/api/purchases) - Product stock replenishment
+- See `applications/productos/views.py` source: `/home/daytona/workspace/source/applications/productos/views.py`

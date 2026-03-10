@@ -1,0 +1,340 @@
+---
+title: 'Authentication'
+description: 'Authentication methods and session management in Inventario API'
+---
+
+## Overview
+
+Inventario uses Django's built-in session-based authentication with CSRF protection. The system also supports OAuth 2.0 via Google Sign-In through Django Allauth.
+
+## Authentication Methods
+
+### Session Authentication
+
+The primary authentication method uses Django sessions with cookies.
+
+#### Login
+
+```bash
+curl -X POST http://localhost:8000/login/ \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=securepassword"
+```
+
+<ParamField body="username" type="string" required>
+  User's username
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+</ParamField>
+
+**Response:** Redirects to `/dashboard/` with session cookie set
+
+#### Logout
+
+```bash
+curl -X POST http://localhost:8000/logout/ \
+  -H "Cookie: sessionid=<your-session-id>"
+```
+
+**Response:** Session terminated, redirects to home page
+
+### Google OAuth 2.0
+
+Inventario supports Google Sign-In via Django Allauth.
+
+#### Initiate Google Login
+
+```bash
+curl http://localhost:8000/accounts/google/login/
+```
+
+This redirects to Google's OAuth consent screen. After authorization, users are redirected to:
+
+```
+http://localhost:8000/after-google-login/
+```
+
+## CSRF Protection
+
+All POST, PUT, DELETE requests require a valid CSRF token.
+
+### Getting CSRF Token
+
+1. **From Cookie**: Django sets `csrftoken` cookie on first visit
+2. **From HTML Form**: Extract from hidden input in rendered forms
+
+### Using CSRF Token
+
+#### Form-Encoded Requests
+
+```bash
+curl -X POST http://localhost:8000/productos/nuevo/ \
+  -H "Cookie: csrftoken=<token>; sessionid=<session>" \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Laptop&precio=1500.00"
+```
+
+#### AJAX/JSON Requests
+
+```javascript
+fetch('/ventas/api/buscar-producto/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': getCookie('csrftoken')
+  },
+  body: JSON.stringify({ codigo_barras: '1234567890' })
+})
+```
+
+## User Registration
+
+### Create New User Account
+
+```bash
+curl -X POST http://localhost:8000/registro/ \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=newuser&email=user@example.com&password1=SecurePass123&password2=SecurePass123"
+```
+
+<ParamField body="username" type="string" required>
+  Unique username
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Valid email address (must be unique)
+</ParamField>
+
+<ParamField body="password1" type="string" required>
+  Password (minimum length validation applies)
+</ParamField>
+
+<ParamField body="password2" type="string" required>
+  Password confirmation (must match password1)
+</ParamField>
+
+**Response:** User created with `admin` role by default, redirects to email verification
+
+## Email Verification
+
+New users must verify their email address.
+
+### Verification Flow
+
+1. User registers
+2. System generates 64-character token
+3. Verification email sent with link: `/verificar-email/<uidb64>/`
+4. Token valid for 24 hours
+5. User clicks link to verify
+
+### Verify Email Endpoint
+
+```bash
+curl http://localhost:8000/verificar-email/<uidb64>/
+```
+
+**Response:** Sets `email_verified=True`, redirects to login
+
+## Password Reset
+
+Inventario implements a custom 6-digit code password reset flow.
+
+### Step 1: Request Reset Code
+
+```bash
+curl -X POST http://localhost:8000/recuperacion/ \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "email=user@example.com"
+```
+
+<ParamField body="email" type="string" required>
+  Registered email address
+</ParamField>
+
+**Response:** 6-digit code sent to email (valid for 10 minutes)
+
+### Step 2: Verify Reset Code
+
+```bash
+curl -X POST http://localhost:8000/recuperacion/verificar/ \
+  -d "code=123456"
+```
+
+<ParamField body="code" type="string" required>
+  6-digit verification code from email
+</ParamField>
+
+**Response:** Session marked for password reset
+
+### Step 3: Set New Password
+
+```bash
+curl -X POST http://localhost:8000/recuperacion/establecer/ \
+  -d "new_password1=NewSecurePass123&new_password2=NewSecurePass123"
+```
+
+<ParamField body="new_password1" type="string" required>
+  New password
+</ParamField>
+
+<ParamField body="new_password2" type="string" required>
+  Password confirmation
+</ParamField>
+
+**Response:** Password updated, redirects to login
+
+## User Model
+
+The custom User model extends Django's AbstractUser:
+
+<ResponseField name="id" type="integer">
+  Unique user identifier
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  Unique username
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Unique email address (required)
+</ResponseField>
+
+<ResponseField name="rol" type="string">
+  User role: `admin` or `vendedor`
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  First name (optional)
+</ResponseField>
+
+<ResponseField name="apellido" type="string">
+  Last name (optional)
+</ResponseField>
+
+<ResponseField name="telefono" type="string">
+  Phone number (optional)
+</ResponseField>
+
+<ResponseField name="foto_perfil" type="file">
+  Profile photo upload
+</ResponseField>
+
+<ResponseField name="foto_google_url" type="string">
+  Google profile photo URL (for OAuth users)
+</ResponseField>
+
+<ResponseField name="email_verified" type="boolean">
+  Email verification status
+</ResponseField>
+
+<ResponseField name="tutorial_visto" type="boolean">
+  Whether user has completed tutorial
+</ResponseField>
+
+<ResponseField name="debe_cambiar_password" type="boolean">
+  Forces password change on next login (for vendedor accounts)
+</ResponseField>
+
+<ResponseField name="creado_por" type="integer">
+  Foreign key to admin user who created this account (for vendedor users)
+</ResponseField>
+
+## Role-Based Access Control
+
+### Admin Role (`rol='admin'`)
+
+Full access to all endpoints:
+- Create, edit, delete products
+- Manage purchases
+- Create/manage vendedor accounts
+- Access all reports
+- System configuration
+
+### Vendedor Role (`rol='vendedor'`)
+
+Limited access:
+- View products (read-only)
+- Create sales
+- View own sales history
+- Cannot modify products or purchases
+
+### Enforcing Permissions
+
+Many endpoints use the `@admin_required` decorator:
+
+```python
+from applications.cuentas.decorators import admin_required
+
+@login_required
+@admin_required
+def crear_producto(request):
+    # Only admin users can access
+    pass
+```
+
+**Response for unauthorized access:** HTTP 403 Forbidden
+
+## Session Management
+
+### Session Cookie
+
+Django sets a `sessionid` cookie upon successful authentication:
+
+```
+Set-Cookie: sessionid=<session-hash>; HttpOnly; Path=/; SameSite=Lax
+```
+
+### Session Timeout
+
+Configured in Django settings (default: 2 weeks)
+
+### Checking Authentication Status
+
+All views decorated with `@login_required` will redirect to `/login/` if not authenticated.
+
+```bash
+# Authenticated request
+curl http://localhost:8000/dashboard/ \
+  -H "Cookie: sessionid=<your-session-id>"
+```
+
+**Unauthenticated Response:** HTTP 302 redirect to `/login/`
+
+## Security Features
+
+### Password Validation
+
+Custom validators in `applications.cuentas.validators`:
+
+1. **LongitudMinimaValidator** - Minimum length requirement
+2. **ContraseñaComunValidator** - Prevents common passwords
+3. **ContraseñaNumericaValidator** - Prevents purely numeric passwords
+
+### CSRF Protection
+
+Enabled via `CsrfViewMiddleware` - all state-changing operations require valid CSRF token
+
+### Force Password Change
+
+Vendedor users created by admin have `debe_cambiar_password=True` and are redirected via `ForzarCambioPasswordMiddleware` until they set a new password.
+
+## Example: Complete Authentication Flow
+
+```bash
+# 1. Get CSRF token
+curl -c cookies.txt http://localhost:8000/login/
+
+# 2. Login with credentials
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:8000/login/ \
+  -H "X-CSRFToken: $(grep csrftoken cookies.txt | cut -f7)" \
+  -d "username=admin&password=mypassword"
+
+# 3. Make authenticated request
+curl -b cookies.txt http://localhost:8000/productos/
+
+# 4. Logout
+curl -b cookies.txt -X POST http://localhost:8000/logout/ \
+  -H "X-CSRFToken: $(grep csrftoken cookies.txt | cut -f7)"
+```

@@ -1,0 +1,428 @@
+---
+title: 'User Roles & Permissions'
+description: 'Understand the role-based access control system in Inventario'
+icon: 'user-shield'
+---
+
+## Overview
+
+Inventario implements a role-based access control (RBAC) system with two primary roles: **Admin** and **Vendedor** (Salesperson). Each role has distinct permissions and access levels throughout the system.
+
+## User Model
+
+Roles are defined directly in the `Usuario` model:
+
+<CodeGroup>
+```python applications/cuentas/models.py
+class Usuario(AbstractUser):
+    ROLES = (
+        ('admin', 'Administrador'),
+        ('vendedor', 'Vendedor'),
+    )
+
+    rol = models.CharField(max_length=20, choices=ROLES, default='admin')
+    
+    # Hierarchical relationship
+    creado_por = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='vendedores_creados'
+    )
+
+    def __str__(self):
+        return f"{self.username} ({self.get_rol_display()})"
+```
+</CodeGroup>
+
+<Info>
+The `creado_por` field creates a hierarchical relationship where admins can create and manage their vendedor accounts.
+</Info>
+
+## Admin Role
+
+### Capabilities
+
+Administrators have full access to the system:
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users">
+    Create, edit, and delete vendedor accounts
+  </Card>
+  
+  <Card title="Dashboard Access" icon="chart-line">
+    View comprehensive analytics and insights
+  </Card>
+  
+  <Card title="Inventory Control" icon="boxes-stacked">
+    Manage products, suppliers, and stock levels
+  </Card>
+  
+  <Card title="Financial Reports" icon="file-invoice-dollar">
+    Access sales reports, expenses, and profit analysis
+  </Card>
+  
+  <Card title="Configuration" icon="gear">
+    Configure invoice settings and system preferences
+  </Card>
+  
+  <Card title="Purchase Management" icon="cart-shopping">
+    Record purchases and manage expenses
+  </Card>
+  
+  <Card title="Client Management" icon="address-book">
+    Manage client database and relationships
+  </Card>
+  
+  <Card title="AI Features" icon="brain">
+    Access AI-powered insights and recommendations
+  </Card>
+</CardGroup>
+
+### Admin-Only Views
+
+Certain views are restricted to admins using the `@admin_required` decorator:
+
+```python applications/cuentas/decorators.py
+def admin_required(view_func):
+    """🔒 Permite acceso solo a administradores"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, 'Debes iniciar sesión para continuar.')
+            return redirect('login')
+
+        if request.user.rol == 'admin':
+            return view_func(request, *args, **kwargs)
+        else:
+            messages.warning(request, 'Acceso restringido a administradores.')
+            return redirect('ventas:lista_ventas')
+    return wrapper
+```
+
+<Accordion title="Example: Dashboard View">
+```python applications/cuentas/views.py
+@admin_required
+@login_required
+@no_cache
+def dashboard(request):
+    # Dashboard logic with hierarchical data filtering
+    usuarios_ids = get_subordinate_ids(request.user)
+    # ... analytics and reporting logic
+```
+
+The dashboard uses `get_subordinate_ids()` to show data only for the admin and their vendedores.
+</Accordion>
+
+## Vendedor Role
+
+### Capabilities
+
+Vendedores (Salespeople) have focused access to sales operations:
+
+<CardGroup cols={2}>
+  <Card title="Sales Management" icon="cash-register">
+    Create and view their own sales transactions
+  </Card>
+  
+  <Card title="Product Catalog" icon="list">
+    View available products and inventory
+  </Card>
+  
+  <Card title="Client Information" icon="user">
+    Access client information for sales
+  </Card>
+  
+  <Card title="Invoice Generation" icon="file-invoice">
+    Generate invoices for their sales
+  </Card>
+</CardGroup>
+
+### Vendedor Restrictions
+
+<Warning>
+Vendedores **cannot**:
+- Access the admin dashboard
+- Create or manage other users
+- Modify product inventory or prices
+- View financial reports or analytics
+- Access purchase management
+- Change system configuration
+- View sales from other vendedores
+</Warning>
+
+### Vendedor-Only Decorator
+
+```python applications/cuentas/decorators.py
+def vendedor_required(view_func):
+    """🛒 Permite acceso solo a vendedores"""
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, 'Debes iniciar sesión para continuar.')
+            return redirect('login')
+
+        if request.user.rol == 'vendedor':
+            return view_func(request, *args, **kwargs)
+        else:
+            messages.warning(request, 'Acceso restringido a vendedores.')
+            return redirect('dashboard')
+    return wrapper
+```
+
+## Role Assignment
+
+### Creating Vendedor Accounts
+
+Only admins can create vendedor accounts through the user management interface:
+
+<Steps>
+  <Step title="Admin Accesses User List">
+    Navigate to the user management section (restricted to admins).
+  </Step>
+  
+  <Step title="Create New User">
+    Fill out the user creation form:
+    ```python
+    class UsuarioForm(forms.ModelForm):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            # Limit role choices to 'Vendedor' only
+            self.fields['rol'].choices = [('vendedor', 'Vendedor')]
+    ```
+  </Step>
+  
+  <Step title="Automatic Assignment">
+    The system automatically assigns the creating admin as the vendedor's supervisor:
+    ```python
+    nuevo_usuario = form.save(commit=False)
+    nuevo_usuario.creado_por = request.user
+    nuevo_usuario.save()
+    ```
+  </Step>
+  
+  <Step title="Password Setup">
+    New vendedores receive a temporary password and are required to change it on first login:
+    ```python
+    nuevo_usuario.debe_cambiar_password = True
+    ```
+  </Step>
+</Steps>
+
+<Info>
+**Security Note**: The user creation form only allows admins to create vendedor accounts. Admins cannot create other admin accounts through the UI.
+</Info>
+
+### User Form Configuration
+
+<CodeGroup>
+```python applications/usuarios/forms.py
+class UsuarioForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control password-input',
+            'placeholder': 'Dejar vacío para no cambiar'
+        }),
+        label="Contraseña",
+        required=False
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.fields['password'].required = True
+        
+        # 🔹 Limit role options to 'Vendedor' only
+        self.fields['rol'].choices = [('vendedor', 'Vendedor')]
+
+    class Meta:
+        model = Usuario
+        fields = ['username', 'nombre', 'apellido', 'email', 'telefono', 'rol', 'password']
+```
+</CodeGroup>
+
+## Hierarchical Data Access
+
+### Subordinate Filtering
+
+Admins only see data for themselves and their vendedores:
+
+```python applications/cuentas/utils.py
+def get_subordinate_ids(user):
+    """
+    Returns list of user IDs including the user and all vendedores created by them.
+    """
+    if user.rol == 'admin':
+        subordinates = Usuario.objects.filter(creado_por=user).values_list('id', flat=True)
+        return [user.id] + list(subordinates)
+    return [user.id]
+```
+
+### Application in Views
+
+<CodeGroup>
+```python applications/cuentas/views.py
+@admin_required
+@login_required
+def dashboard(request):
+    # Filter data hierarchically
+    usuarios_ids = get_subordinate_ids(request.user)
+    
+    # Query only relevant data
+    detalles = DetalleVenta.objects.filter(
+        venta__fecha_venta__gte=inicio,
+        venta__vendedor__id__in=usuarios_ids
+    )
+```
+
+```python applications/usuarios/views.py
+@login_required
+@admin_required
+def lista_usuarios(request):
+    # Show only users created by this admin
+    usuarios_list = Usuario.objects.filter(creado_por=request.user)
+```
+</CodeGroup>
+
+<Note>
+This hierarchical model ensures data isolation between different admin accounts and their vendedor teams.
+</Note>
+
+## Multi-User Workflows
+
+### Sales Attribution
+
+Each sale is automatically attributed to the logged-in user:
+
+```python
+venta.vendedor = request.user
+venta.save()
+```
+
+### Reporting & Analytics
+
+Admins can:
+- View aggregated sales across their team
+- Compare performance between vendedores
+- Filter reports by vendedor
+- Track individual contributions
+
+<Tip>
+The dashboard automatically aggregates data from all subordinate vendedores, providing a complete view of team performance.
+</Tip>
+
+## Login Redirects
+
+Users are automatically redirected based on their role after login:
+
+```python applications/cuentas/views.py
+if usuario:
+    login(request, usuario)
+    messages.success(request, f'Bienvenido {usuario.username}')
+
+    # Role-based redirect
+    if usuario.is_superuser:
+        return redirect('/admin/')
+    elif usuario.rol == 'admin':
+        return redirect('dashboard')
+    elif usuario.rol == 'vendedor':
+        return redirect('ventas:lista_ventas')
+    return redirect('home')
+```
+
+<CardGroup cols={3}>
+  <Card title="Superuser" icon="crown">
+    → `/admin/` (Django admin panel)
+  </Card>
+  
+  <Card title="Admin" icon="chart-line">
+    → `/dashboard/` (Analytics dashboard)
+  </Card>
+  
+  <Card title="Vendedor" icon="cash-register">
+    → Sales list (Operational view)
+  </Card>
+</CardGroup>
+
+## Permission Management
+
+### User List Access Control
+
+```python applications/usuarios/views.py
+@login_required
+@admin_required
+def lista_usuarios(request):
+    # Show only users created by the current admin
+    usuarios_list = Usuario.objects.filter(creado_por=request.user)
+    
+    paginator = Paginator(usuarios_list, 7)
+    # ... pagination logic
+```
+
+### Edit/Delete Restrictions
+
+Admins can only edit/delete vendedores they created:
+
+```python applications/usuarios/views.py
+@login_required
+@admin_required
+def editar_usuario(request, id):
+    # Ensures admin can only edit their own vendedores
+    usuario = get_object_or_404(Usuario, id=id, creado_por=request.user)
+    # ... edit logic
+
+@login_required
+@admin_required
+def eliminar_usuario(request, id):
+    # Ensures admin can only delete their own vendedores
+    usuario = get_object_or_404(Usuario, id=id, creado_por=request.user)
+    # ... delete logic
+```
+
+<Warning>
+**Cascade Deletion**: When an admin account is deleted, all vendedor accounts created by that admin are also deleted due to the `on_delete=models.CASCADE` relationship.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Role Assignment">
+    - Always assign vendedores to the correct admin supervisor
+    - Require password changes for new vendedor accounts
+    - Use strong password validation rules
+    - Regularly audit user accounts and permissions
+  </Accordion>
+  
+  <Accordion title="Data Isolation">
+    - Always filter queries using `get_subordinate_ids()`
+    - Verify ownership before allowing edits/deletes
+    - Use `get_object_or_404` with ownership filters
+    - Test multi-admin scenarios thoroughly
+  </Accordion>
+  
+  <Accordion title="Security">
+    - Apply `@admin_required` to sensitive views
+    - Use `@vendedor_required` for role-specific features
+    - Combine with `@login_required` for authentication
+    - Implement proper error messages for unauthorized access
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/users/authentication">
+    Learn about login methods and security
+  </Card>
+  
+  <Card title="Profile Management" icon="user-pen" href="/users/profile">
+    Manage user profiles and settings
+  </Card>
+  
+  <Card title="Security Configuration" icon="shield" href="/admin/security">
+    Advanced security and access control
+  </Card>
+  
+  <Card title="Authentication API" icon="code" href="/api/authentication">
+    Programmatic authentication and user management
+  </Card>
+</CardGroup>

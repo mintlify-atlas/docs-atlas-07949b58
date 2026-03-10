@@ -1,0 +1,361 @@
+---
+title: Environment Variables
+description: Complete reference for all environment variables in Inventario
+---
+
+Inventario uses environment variables for configuration. Variables are loaded from a `.env` file in development or set directly in your hosting platform for production.
+
+## Required Variables
+
+These variables must be set for production deployments.
+
+### SECRET_KEY
+
+**Type:** String  
+**Required:** Yes
+
+Django's secret key for cryptographic signing. Used for sessions, CSRF tokens, password reset tokens, etc.
+
+```bash
+SECRET_KEY=your-secret-key-here
+```
+
+<Warning>
+Generate a strong random key for production:
+
+```bash
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+```
+
+Never commit this to version control or share it publicly.
+</Warning>
+
+**Default:** `django-insecure-641xw29uuar#$5&nj!kxjozc+#2#=f6s+4lmziq&_8hnh$#@6$` (insecure, development only)
+
+### DATABASE_URL
+
+**Type:** Database URL  
+**Required:** Yes (for production)
+
+PostgreSQL database connection string in URL format.
+
+```bash
+DATABASE_URL=postgresql://user:password@host:port/dbname
+```
+
+**Default:** SQLite database at `db.sqlite3` (development only)
+
+Parsed by `dj-database-url` with connection pooling (`conn_max_age=600`).
+
+### ALLOWED_HOSTS
+
+**Type:** Comma-separated list  
+**Required:** Yes (for production)
+
+Domains that Django will serve.
+
+```bash
+ALLOWED_HOSTS=myapp.railway.app,www.example.com
+```
+
+<Warning>
+The default `*` (all hosts) is insecure for production. Always specify exact domains.
+</Warning>
+
+**Default:** `*`
+
+### CSRF_TRUSTED_ORIGINS
+
+**Type:** Comma-separated URLs  
+**Required:** Yes (for production with HTTPS)
+
+Trusted origins for CSRF protection.
+
+```bash
+CSRF_TRUSTED_ORIGINS=https://myapp.railway.app,https://www.example.com
+```
+
+**Format:** Must include full URL with protocol (`https://`)
+
+**Default:** `http://127.0.0.1:8000`
+
+## Authentication Variables
+
+### Google OAuth
+
+Required for Google Sign-In functionality.
+
+#### GOOGLE_CLIENT_ID
+
+**Type:** String  
+**Required:** If using Google OAuth
+
+Google OAuth 2.0 client ID from Google Cloud Console.
+
+```bash
+GOOGLE_CLIENT_ID=123456789-abcdefg.apps.googleusercontent.com
+```
+
+**Default:** Empty string (Google OAuth disabled)
+
+#### GOOGLE_CLIENT_SECRET
+
+**Type:** String  
+**Required:** If using Google OAuth
+
+Google OAuth 2.0 client secret.
+
+```bash
+GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+<Warning>
+Keep this secret secure. Never commit to version control.
+</Warning>
+
+**Default:** Empty string
+
+**Configuration in settings.py:**
+
+```python
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'VERIFIED_EMAIL': True,
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+            'key': ''
+        }
+    }
+}
+```
+
+## Email Configuration
+
+### RESEND_API_KEY
+
+**Type:** String  
+**Required:** If sending emails
+
+API key for Resend email service.
+
+```bash
+RESEND_API_KEY=re_1234567890abcdef
+```
+
+**Default:** Empty string (email disabled)
+
+### DEFAULT_FROM_EMAIL
+
+**Type:** Email address  
+**Required:** If sending emails
+
+Default sender email address.
+
+```bash
+DEFAULT_FROM_EMAIL=noreply@example.com
+```
+
+**Default:** None
+
+<Note>
+Inventario previously used SMTP (Gmail) but has migrated to Resend. The SMTP configuration is commented out in settings.py:
+- `EMAIL_HOST_USER`
+- `EMAIL_HOST_PASSWORD`
+</Note>
+
+## AI Integration
+
+### OPENAI_API_KEY
+
+**Type:** String  
+**Required:** If using AI features
+
+OpenAI API key for AI-powered features (likely used in reporting or analytics).
+
+```bash
+OPENAI_API_KEY=sk-proj-...
+```
+
+<Warning>
+Secure this key carefully. OpenAI API usage incurs costs based on usage.
+</Warning>
+
+**Default:** Empty string (AI features disabled)
+
+## SMS Integration (Twilio)
+
+Required for SMS notifications or two-factor authentication.
+
+### TWILIO_ACCOUNT_SID
+
+**Type:** String  
+**Required:** If using Twilio SMS
+
+Twilio account identifier.
+
+```bash
+TWILIO_ACCOUNT_SID=AC1234567890abcdef
+```
+
+**Default:** Empty string (Twilio disabled)
+
+### TWILIO_AUTH_TOKEN
+
+**Type:** String  
+**Required:** If using Twilio SMS
+
+Twilio authentication token.
+
+```bash
+TWILIO_AUTH_TOKEN=your-auth-token
+```
+
+<Warning>
+Keep this token secure. It provides full access to your Twilio account.
+</Warning>
+
+**Default:** Empty string
+
+### TWILIO_PHONE_NUMBER
+
+**Type:** Phone number  
+**Required:** If using Twilio SMS
+
+Twilio phone number for sending SMS (E.164 format).
+
+```bash
+TWILIO_PHONE_NUMBER=+18646688262
+```
+
+**Default:** Empty string
+
+## Application Behavior
+
+### DEBUG
+
+**Type:** Boolean string  
+**Required:** No
+
+Enables Django debug mode.
+
+```bash
+DEBUG=False
+```
+
+**Values:**
+- `True` - Enable debug mode (development)
+- `False` - Disable debug mode (production)
+
+<Warning>
+Always set `DEBUG=False` in production. Debug mode exposes sensitive information and disables security features.
+</Warning>
+
+**Default:** `False`
+
+**Side effects when DEBUG=True:**
+- `SESSION_COOKIE_SECURE` is disabled
+- `CSRF_COOKIE_SECURE` is disabled
+- Detailed error pages are shown
+- Static files are served by Django (not WhiteNoise)
+
+## Development vs Production
+
+### Development .env Example
+
+```bash
+# Development configuration
+DEBUG=True
+SECRET_KEY=django-insecure-641xw29uuar#$5&nj!kxjozc+#2#=f6s+4lmziq&_8hnh$#@6$
+ALLOWED_HOSTS=*
+CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8000
+
+# Database (SQLite default)
+# DATABASE_URL not needed for SQLite
+
+# Optional services for testing
+GOOGLE_CLIENT_ID=your-dev-client-id
+GOOGLE_CLIENT_SECRET=your-dev-client-secret
+RESEND_API_KEY=re_dev_key
+DEFAULT_FROM_EMAIL=dev@localhost
+```
+
+### Production Environment Variables
+
+```bash
+# Production configuration
+DEBUG=False
+SECRET_KEY=<generated-secret-key>
+ALLOWED_HOSTS=myapp.railway.app
+CSRF_TRUSTED_ORIGINS=https://myapp.railway.app
+
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/inventario
+
+# Google OAuth
+GOOGLE_CLIENT_ID=123456789-abc.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=<secret>
+
+# Email
+RESEND_API_KEY=re_prod_key
+DEFAULT_FROM_EMAIL=noreply@myapp.com
+
+# Optional: AI features
+OPENAI_API_KEY=sk-proj-...
+
+# Optional: SMS
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=<token>
+TWILIO_PHONE_NUMBER=+1234567890
+```
+
+## Security Notes
+
+<Warning>
+Never commit `.env` files or expose environment variables containing:
+- `SECRET_KEY`
+- `DATABASE_URL`
+- `GOOGLE_CLIENT_SECRET`
+- `RESEND_API_KEY`
+- `OPENAI_API_KEY`
+- `TWILIO_AUTH_TOKEN`
+- `EMAIL_HOST_PASSWORD`
+
+Add `.env` to `.gitignore` to prevent accidental commits.
+</Warning>
+
+## Loading Environment Variables
+
+Inventario uses `python-dotenv` to load variables from `.env`:
+
+```python
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+```
+
+**Priority:**
+1. System environment variables (highest priority)
+2. Variables from `.env` file
+3. Default values in code (lowest priority)
+
+## Verification
+
+To verify environment variables are loaded correctly:
+
+```bash
+python manage.py shell
+```
+
+```python
+from django.conf import settings
+
+# Check critical settings
+print(f"DEBUG: {settings.DEBUG}")
+print(f"ALLOWED_HOSTS: {settings.ALLOWED_HOSTS}")
+print(f"DATABASE: {settings.DATABASES['default']['ENGINE']}")
+print(f"SECRET_KEY set: {bool(settings.SECRET_KEY)}")
+```

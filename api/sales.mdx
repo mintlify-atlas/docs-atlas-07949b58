@@ -1,0 +1,522 @@
+---
+title: 'Sales API'
+description: 'Manage sales transactions and extra income'
+---
+
+## Overview
+
+The Sales API manages sale transactions with automatic stock updates, IVA (tax) calculations, and support for both quick sales and registered client sales.
+
+## Venta Model (Sale)
+
+<ResponseField name="id" type="integer">
+  Unique sale identifier (auto-generated)
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to admin user (owner)
+</ResponseField>
+
+<ResponseField name="cliente" type="string">
+  Quick sale customer name (optional, max 100 characters)
+</ResponseField>
+
+<ResponseField name="cliente_fk" type="integer">
+  Foreign key to registered Cliente (optional, takes precedence over `cliente`)
+</ResponseField>
+
+<ResponseField name="forma_pago" type="string">
+  Payment method: `Efectivo` or `Transferencia` (default: `Efectivo`)
+</ResponseField>
+
+<ResponseField name="banco" type="string">
+  Bank name (required if `forma_pago='Transferencia'`, max 50 characters)
+</ResponseField>
+
+<ResponseField name="referencia" type="string">
+  Transaction reference number (optional, max 100 characters)
+</ResponseField>
+
+<ResponseField name="fecha_venta" type="datetime">
+  Sale timestamp (default: current time)
+</ResponseField>
+
+<ResponseField name="vendedor" type="integer">
+  Foreign key to User who created the sale
+</ResponseField>
+
+<ResponseField name="total_venta" type="decimal">
+  Total amount including IVA (12 digits, 2 decimals, auto-calculated)
+</ResponseField>
+
+## DetalleVenta Model (Sale Detail)
+
+<ResponseField name="id" type="integer">
+  Detail line identifier
+</ResponseField>
+
+<ResponseField name="venta" type="integer">
+  Foreign key to parent Venta
+</ResponseField>
+
+<ResponseField name="producto" type="integer">
+  Foreign key to Producto (PROTECT constraint - cannot delete products in sales)
+</ResponseField>
+
+<ResponseField name="cantidad" type="integer">
+  Quantity sold (positive integer, default: 1)
+</ResponseField>
+
+<ResponseField name="precio_unitario" type="decimal">
+  Base price before IVA (10 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="monto_iva" type="decimal">
+  IVA amount per unit (auto-calculated: 19% of precio_unitario)
+</ResponseField>
+
+<ResponseField name="precio_unitario_final" type="decimal">
+  Final unit price with IVA (auto-calculated: precio_unitario + monto_iva)
+</ResponseField>
+
+<ResponseField name="subtotal" type="decimal">
+  Line total (auto-calculated: cantidad × precio_unitario_final)
+</ResponseField>
+
+<ResponseField name="costo_compra" type="decimal">
+  Product cost at time of sale (copied from producto.precio_compra)
+</ResponseField>
+
+## IngresoExtra Model (Extra Income)
+
+<ResponseField name="id" type="integer">
+  Extra income identifier
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User
+</ResponseField>
+
+<ResponseField name="tipo" type="string">
+  Income type: `domicilio`, `servicio`, `mano_obra`, or `otro`
+</ResponseField>
+
+<ResponseField name="descripcion" type="string">
+  Description (max 200 characters, optional)
+</ResponseField>
+
+<ResponseField name="monto" type="decimal">
+  Amount (10 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="fecha" type="datetime">
+  Income timestamp (default: current time)
+</ResponseField>
+
+## List Sales
+
+```bash
+curl -X GET http://localhost:8000/ventas/ \
+  -H "Cookie: sessionid=<your-session>"
+```
+
+### Response
+
+Returns rendered HTML with list of sales for the authenticated user.
+
+## Create Sale
+
+<Note>
+  Requires authentication. Both admin and vendedor can create sales.
+</Note>
+
+```bash
+curl -X POST http://localhost:8000/ventas/nueva/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "cliente=Juan Perez" \
+  -d "forma_pago=Efectivo"
+```
+
+### Request Parameters
+
+<ParamField body="cliente" type="string">
+  Customer name for quick sale (optional if cliente_fk provided)
+</ParamField>
+
+<ParamField body="cliente_fk" type="integer">
+  Registered client ID (optional, takes precedence)
+</ParamField>
+
+<ParamField body="forma_pago" type="string" required>
+  Payment method: `Efectivo` or `Transferencia`
+</ParamField>
+
+<ParamField body="banco" type="string">
+  Bank name (required if forma_pago='Transferencia')
+</ParamField>
+
+<ParamField body="referencia" type="string">
+  Transaction reference
+</ParamField>
+
+### Adding Products to Sale
+
+Products are typically added via the frontend interface or separate AJAX calls. The sale detail creation:
+
+1. Decrements product stock automatically
+2. Calculates IVA (19%)
+3. Calculates subtotals
+4. Updates total_venta on parent Venta
+
+### Response
+
+**Success:** Redirects to sales list with flash message
+
+## Update Sale
+
+```bash
+curl -X POST http://localhost:8000/ventas/editar/<venta_id>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "cliente=Juan Perez (Updated)" \
+  -d "forma_pago=Transferencia" \
+  -d "banco=Banco de Bogota" \
+  -d "referencia=REF123456"
+```
+
+### URL Parameters
+
+<ParamField path="venta_id" type="integer" required>
+  Sale ID to update
+</ParamField>
+
+## Delete Sale
+
+<Warning>
+  Deleting a sale restores product stock for all detail lines.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/ventas/eliminar/<venta_id>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+### URL Parameters
+
+<ParamField path="venta_id" type="integer" required>
+  Sale ID to delete
+</ParamField>
+
+### Response
+
+**Success:** Stock restored, sale deleted, redirects to sales list
+
+## AJAX/API Endpoints
+
+### Search Client
+
+```bash
+curl -X POST http://localhost:8000/ventas/api/buscar-cliente/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{"nombre": "Juan"}'
+```
+
+<ParamField body="nombre" type="string" required>
+  Client name to search (partial match)
+</ParamField>
+
+#### Response
+
+```json
+{
+  "success": true,
+  "clientes": [
+    {
+      "id": 1,
+      "nombre": "Juan Perez",
+      "telefono": "3001234567",
+      "documento": "123456789"
+    }
+  ]
+}
+```
+
+### Search Product by Barcode
+
+```bash
+curl -X POST http://localhost:8000/ventas/api/buscar-producto/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{"codigo_barras": "1234567890"}'
+```
+
+<ParamField body="codigo_barras" type="string" required>
+  Product barcode to search
+</ParamField>
+
+#### Response
+
+```json
+{
+  "success": true,
+  "producto": {
+    "id": 5,
+    "nombre": "Laptop Dell XPS 15",
+    "precio": "1500.00",
+    "stock": 10,
+    "codigo_barras": "1234567890"
+  }
+}
+```
+
+**Product Not Found:**
+```json
+{
+  "success": false,
+  "error": "Producto no encontrado"
+}
+```
+
+### Get Sale Detail (JSON)
+
+```bash
+curl -X GET http://localhost:8000/ventas/api/datos-json/<venta_id>/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+<ParamField path="venta_id" type="integer" required>
+  Sale ID
+</ParamField>
+
+#### Response
+
+```json
+{
+  "id": 15,
+  "cliente": "Juan Perez",
+  "forma_pago": "Efectivo",
+  "total_venta": "3570.00",
+  "fecha_venta": "2024-03-15T10:30:00-05:00",
+  "detalles": [
+    {
+      "producto": {
+        "id": 5,
+        "nombre": "Laptop Dell XPS 15"
+      },
+      "cantidad": 2,
+      "precio_unitario": "1500.00",
+      "monto_iva": "285.00",
+      "precio_unitario_final": "1785.00",
+      "subtotal": "3570.00"
+    }
+  ]
+}
+```
+
+### Search Sales
+
+```bash
+curl -X GET "http://localhost:8000/ventas/api/buscar-ventas/?q=Juan" \
+  -H "Cookie: sessionid=<session>"
+```
+
+<ParamField query="q" type="string" required>
+  Search query (searches cliente name)
+</ParamField>
+
+### Get Products by Sale
+
+```bash
+curl -X GET http://localhost:8000/ventas/<venta_id>/productos/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+<ParamField path="venta_id" type="integer" required>
+  Sale ID
+</ParamField>
+
+#### Response
+
+Returns JSON array of products in the sale.
+
+## Extra Income
+
+### Register Extra Income
+
+```bash
+curl -X POST http://localhost:8000/ventas/api/ingreso-extra/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{
+    "tipo": "domicilio",
+    "descripcion": "Delivery fee",
+    "monto": "5000.00"
+  }'
+```
+
+<ParamField body="tipo" type="string" required>
+  Income type: `domicilio`, `servicio`, `mano_obra`, or `otro`
+</ParamField>
+
+<ParamField body="descripcion" type="string">
+  Description (max 200 characters)
+</ParamField>
+
+<ParamField body="monto" type="decimal" required>
+  Amount (e.g., "5000.00")
+</ParamField>
+
+#### Response
+
+```json
+{
+  "success": true,
+  "ingreso": {
+    "id": 10,
+    "tipo": "domicilio",
+    "descripcion": "Delivery fee",
+    "monto": "5000.00",
+    "fecha": "2024-03-15T14:20:00-05:00"
+  }
+}
+```
+
+### Get Extra Income Detail
+
+```bash
+curl -X GET http://localhost:8000/ventas/api/ingreso-extra/<ingreso_id>/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+### Delete Extra Income
+
+```bash
+curl -X POST http://localhost:8000/ventas/ingreso-extra/eliminar/<ingreso_id>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+## Generate Sale Invoice (PDF)
+
+```bash
+curl -X GET http://localhost:8000/ventas/factura/<venta_id>/ \
+  -H "Cookie: sessionid=<session>" \
+  --output factura.pdf
+```
+
+<ParamField path="venta_id" type="integer" required>
+  Sale ID
+</ParamField>
+
+### Response
+
+**Content-Type:** `application/pdf`
+
+Downloads PDF invoice with sale details.
+
+## Business Logic
+
+### Automatic Stock Management
+
+When `DetalleVenta` is saved:
+
+```python
+# Stock decremented
+producto.stock -= cantidad
+producto.save()
+```
+
+When `DetalleVenta` is deleted:
+
+```python
+# Stock restored
+producto.stock += cantidad
+producto.save()
+```
+
+When `DetalleVenta` quantity updated:
+
+```python
+# Adjust stock by difference
+diferencia = new_cantidad - old_cantidad
+producto.stock -= diferencia
+producto.save()
+```
+
+### IVA Calculation (19%)
+
+Constant defined: `IVA_RATE = Decimal('0.19')`
+
+On save:
+
+```python
+base = Decimal(self.precio_unitario)
+self.monto_iva = (base * IVA_RATE).quantize(Decimal('0.01'))
+self.precio_unitario_final = (base + self.monto_iva).quantize(Decimal('0.01'))
+self.subtotal = self.cantidad * self.precio_unitario_final
+```
+
+### Total Venta Update
+
+After each detail save/delete:
+
+```python
+venta.actualizar_total()  # Recalculates sum of all detail subtotals
+```
+
+### Cost Tracking
+
+On first save, `costo_compra` copied from product:
+
+```python
+if not self.pk or self.costo_compra == 0:
+    self.costo_compra = self.producto.precio_compra
+```
+
+This preserves historical cost for profit analysis.
+
+## Example Workflow
+
+```bash
+# 1. Search for product by barcode
+curl -X POST http://localhost:8000/ventas/api/buscar-producto/ \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{"codigo_barras": "APP-IPH14-001"}'
+
+# Response: {"success": true, "producto": {"id": 5, "precio": "999.00", "stock": 8}}
+
+# 2. Create sale (typically done via web form)
+curl -X POST http://localhost:8000/ventas/nueva/ \
+  -d "cliente=Maria Lopez" \
+  -d "forma_pago=Transferencia" \
+  -d "banco=Bancolombia" \
+  -d "referencia=TRX789"
+
+# 3. Add product to sale (via detail creation)
+# This happens in the UI - detail is created with:
+# - producto_id=5
+# - cantidad=2
+# - precio_unitario=999.00
+# Auto-calculates: monto_iva=189.81, precio_unitario_final=1188.81, subtotal=2377.62
+# Stock updated: 8 - 2 = 6
+
+# 4. Get sale detail as JSON
+curl http://localhost:8000/ventas/api/datos-json/15/
+
+# 5. Download invoice
+curl http://localhost:8000/ventas/factura/15/ --output invoice.pdf
+```
+
+## Related Endpoints
+
+- [Products API](/api/products) - Stock management
+- [Clients API](/api/clients) - Registered customer sales
+- See source: `applications/ventas/views.py` and `applications/ventas/models.py`

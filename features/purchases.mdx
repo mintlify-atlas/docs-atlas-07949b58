@@ -1,0 +1,428 @@
+---
+title: 'Purchase Management'
+description: 'Record supplier purchases, track inventory costs, and manage assets with automatic stock updates'
+icon: 'truck'
+---
+
+## Overview
+
+The Purchase Management system helps you track inventory purchases from suppliers, manage product costs, and record asset acquisitions. The system automatically updates product stock levels and calculates IVA on all purchases.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Product Purchases" icon="boxes">
+    Record bulk product purchases from suppliers with automatic stock updates
+  </Card>
+  <Card title="Asset Tracking" icon="warehouse">
+    Track purchases of business assets like furniture and equipment
+  </Card>
+  <Card title="Expiration Dates" icon="calendar-xmark">
+    Set expiration dates for perishable products
+  </Card>
+  <Card title="Cost Management" icon="coins">
+    Track purchase costs and set selling prices per batch
+  </Card>
+</CardGroup>
+
+## Purchase Types
+
+Inventario supports two types of purchases:
+
+### Product Purchases
+
+For inventory items you sell to customers:
+- Multiple products per purchase
+- Automatic stock increases
+- IVA calculation (19%)
+- Batch-specific pricing
+- Optional expiration dates
+
+### Asset Purchases
+
+For business equipment and furniture:
+- Single asset per purchase
+- Fixed asset tracking
+- Cost tracking
+- Acquisition date recording
+
+<Info>
+  Assets are not sold to customers. They're capital investments in your business.
+</Info>
+
+## Recording a Product Purchase
+
+<Steps>
+  <Step title="Navigate to Purchases">
+    Click **Purchases** in the main menu, then **New Purchase**
+  </Step>
+  <Step title="Select Purchase Type">
+    Choose **Product Purchase** as the type
+  </Step>
+  <Step title="Select Supplier">
+    Choose the supplier from your registered supplier list (optional but recommended)
+  </Step>
+  <Step title="Add Products">
+    For each product:
+    - Select the product from your catalog
+    - Enter quantity purchased
+    - Enter unit purchase price (without IVA)
+    - Set selling price for this batch
+    - Check "Has Expiration" if applicable
+    - Enter expiration date if the product expires
+  </Step>
+  <Step title="Review Calculations">
+    The system automatically calculates:
+    - IVA (19%) on each product
+    - Total with IVA per product
+    - Grand total for the purchase
+  </Step>
+  <Step title="Save Purchase">
+    Click **Save** to:
+    - Record the purchase
+    - Increase product stock
+    - Update product purchase cost
+    - Update product selling price (if specified)
+  </Step>
+</Steps>
+
+### What Happens After Saving
+
+When you save a product purchase:
+
+1. **Stock Increases**: Each product's stock increases by the quantity purchased
+2. **Cost Updates**: Product purchase cost updates to the price paid (with IVA)
+3. **Price Updates**: If you set a selling price, the product's selling price updates
+4. **Purchase Record**: A complete purchase record is created for reporting
+
+<Warning>
+  The purchase price you enter should be WITHOUT IVA. The system adds 19% automatically.
+</Warning>
+
+## Recording an Asset Purchase
+
+<Steps>
+  <Step title="Start New Purchase">
+    Click **New Purchase** from the purchase list
+  </Step>
+  <Step title="Select Asset Type">
+    Choose **Asset and Furniture Purchase**
+  </Step>
+  <Step title="Select Supplier">
+    Choose the supplier (optional)
+  </Step>
+  <Step title="Enter Asset Details">
+    Provide:
+    - Asset name (e.g., "Office Desk", "Computer")
+    - Description (optional but recommended)
+    - Value (without IVA)
+    - Acquisition date
+  </Step>
+  <Step title="Save Asset">
+    The system records the asset and calculates total with IVA
+  </Step>
+</Steps>
+
+<Note>
+  Assets do not affect product inventory. They're tracked separately for accounting purposes.
+</Note>
+
+## Expiration Date Management
+
+### Setting Expiration Dates
+
+For perishable products:
+
+1. When adding a product to a purchase, check **"Has Expiration"**
+2. A date field appears
+3. Enter the expiration date for this batch
+4. The date must be in the future
+
+### Expiration Validation
+
+The system enforces:
+- Expiration date is required if "Has Expiration" is checked
+- Date must be after today
+- Date must be in valid format (YYYY-MM-DD)
+
+<Tip>
+  Use expiration dates for food items, medicines, and any products with shelf life. This helps you track aging inventory.
+</Tip>
+
+## Pricing Strategy
+
+### Purchase Price vs. Selling Price
+
+For each purchase batch, you set:
+
+**Purchase Price (Unit Cost)**
+- What you paid to the supplier
+- Enter WITHOUT IVA
+- System adds 19% IVA automatically
+- Updates product's cost basis
+
+**Selling Price**
+- What you'll charge customers
+- Enter as the final price (base, not including IVA)
+- System adds 19% IVA when sold
+- Updates product's selling price
+
+### Price Update Strategy
+
+<Warning>
+  When you record a purchase with a selling price, it updates the product's selling price for ALL future sales, not just this batch.
+</Warning>
+
+Best practices:
+- Set selling prices that cover costs and desired margin
+- Consider market prices and competition
+- Account for IVA in your calculations
+- Review prices regularly
+
+## Viewing Purchase History
+
+### Purchase List
+
+The purchase list shows:
+- Purchase date and time
+- Supplier name
+- Purchase type (Products or Assets)
+- Total amount (with IVA)
+- Quick action buttons
+- Pagination (7 purchases per page)
+
+### Purchase Details
+
+Click on any purchase to view:
+
+**For Product Purchases:**
+- All products purchased
+- Quantities
+- Unit prices with IVA
+- Subtotals per product
+- Grand total
+
+**For Asset Purchases:**
+- Asset name and description
+- Value
+- Acquisition date
+
+## Deleting Purchases (Admin Only)
+
+<Warning>
+  Deleting a purchase affects inventory levels. Be very careful.
+</Warning>
+
+### Deleting Product Purchases
+
+When you delete a product purchase:
+1. Stock decreases for each product by the quantity purchased
+2. If stock would go negative, it's set to zero
+3. Product prices are NOT reverted
+4. Purchase record is permanently removed
+
+### Deleting Asset Purchases
+
+When you delete an asset purchase:
+- The asset record is removed
+- No inventory is affected
+- Purchase record is removed
+
+<Steps>
+  <Step title="Select Purchase">
+    Find the purchase in the list
+  </Step>
+  <Step title="Click Delete">
+    Click the **Delete** button
+  </Step>
+  <Step title="Confirm Deletion">
+    Confirm you want to delete the purchase
+  </Step>
+</Steps>
+
+## Supplier Integration
+
+### Why Link Suppliers
+
+Linking purchases to suppliers enables:
+- Purchase history by supplier
+- Spending reports by supplier
+- Better reordering decisions
+- Supplier relationship management
+
+### Supplier Information Tracked
+
+For each purchase, you can record:
+- Supplier name and company
+- Contact information
+- Purchase date
+- Total amount spent
+
+See [Suppliers](/features/suppliers) for detailed supplier management.
+
+## Expense Tracking
+
+Beyond purchases, you can track other business expenses:
+
+### Recording Expenses
+
+<Steps>
+  <Step title="Go to Expenses">
+    Navigate to **Purchases > Expenses**
+  </Step>
+  <Step title="Click New Expense">
+    Start a new expense record
+  </Step>
+  <Step title="Enter Details">
+    - Concept (what the expense is for)
+    - Description (optional details)
+    - Amount
+  </Step>
+  <Step title="Save Expense">
+    The expense is recorded for reporting
+  </Step>
+</Steps>
+
+### Expense Categories
+
+Common expense categories:
+- Rent and utilities
+- Salaries
+- Marketing and advertising
+- Maintenance
+- Services
+- Taxes and fees
+
+<Info>
+  Expenses are separate from purchases. They don't affect inventory but are included in profit reports.
+</Info>
+
+## Multi-User Support
+
+### Admin Permissions
+Admins can:
+- Create all types of purchases
+- View purchases from themselves and their sellers
+- Delete any purchase
+- Edit purchase records
+
+### Seller Permissions
+Sellers can:
+- View purchases (read-only)
+- Cannot create, edit, or delete purchases
+
+<Note>
+  Only Admin users can record purchases to prevent inventory manipulation.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Link to Suppliers">
+    Even if optional, always select a supplier when recording purchases:
+    - Enables spending reports
+    - Tracks supplier reliability
+    - Makes reordering easier
+    - Improves business insights
+  </Accordion>
+  
+  <Accordion title="Set Selling Prices During Purchase">
+    Calculate and set selling prices when recording purchases:
+    - Ensures you cover costs
+    - Maintains profit margins
+    - Saves time later
+    - Prevents pricing errors
+  </Accordion>
+  
+  <Accordion title="Use Expiration Dates">
+    For any perishable products:
+    - Always set expiration dates
+    - Helps manage FIFO (first in, first out)
+    - Reduces waste
+    - Improves food safety
+  </Accordion>
+  
+  <Accordion title="Separate Assets from Inventory">
+    Use the asset purchase type for:
+    - Equipment
+    - Furniture
+    - Computers
+    - Vehicles
+    
+    This keeps accounting clean and accurate.
+  </Accordion>
+  
+  <Accordion title="Review Purchases Monthly">
+    Regularly review your purchase history:
+    - Identify spending patterns
+    - Negotiate better supplier terms
+    - Optimize reorder quantities
+    - Control costs
+  </Accordion>
+  
+  <Accordion title="Track All Expenses">
+    Don't forget to record non-inventory expenses:
+    - Rent
+    - Utilities
+    - Salaries
+    - Services
+    
+    This gives you complete profit and loss visibility.
+  </Accordion>
+</AccordionGroup>
+
+## IVA Calculations
+
+### Understanding IVA (Tax)
+
+Inventario uses a 19% IVA (Value Added Tax) rate:
+
+**On Purchases:**
+- You enter the base price
+- System calculates: Base × 1.19 = Total with IVA
+- This total becomes the product cost
+
+**On Sales:**
+- Customer pays price including IVA
+- Reports show IVA breakdown
+
+<Info>
+  All amounts displayed in purchase lists include IVA. Detailed views show both base and IVA amounts.
+</Info>
+
+## Troubleshooting
+
+### Purchase Price Seems Wrong
+
+If the total seems incorrect:
+- Verify you entered prices WITHOUT IVA
+- Check that quantities are correct
+- Remember: Total = (Unit Price × 1.19) × Quantity
+
+### Expiration Date Won't Save
+
+Common issues:
+- Date is in the past (must be future)
+- Date format is incorrect (use date picker)
+- "Has Expiration" isn't checked
+
+### Stock Didn't Update
+
+If stock levels don't change:
+1. Verify the purchase saved successfully
+2. Check that you selected the correct products
+3. Refresh the product list
+4. Review purchase details to confirm products
+
+### Can't Delete Purchase
+
+If deletion fails:
+- Check that you're logged in as Admin
+- Verify no other constraints prevent deletion
+- Contact support if issue persists
+
+## Related Features
+
+- [Products](/features/products) - Manage the products you purchase
+- [Suppliers](/features/suppliers) - Maintain your supplier database
+- [Reports](/features/reports) - Analyze purchase spending and patterns

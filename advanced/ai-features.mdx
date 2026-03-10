@@ -1,0 +1,525 @@
+---
+title: 'AI-Powered Features'
+description: 'Enable intelligent business insights using OpenAI integration'
+icon: 'brain'
+---
+
+## Overview
+
+Inventario integrates with **OpenAI's GPT models** to provide AI-powered business insights, recommendations, and analysis. These features help business owners make data-driven decisions based on their sales, inventory, and financial data.
+
+## OpenAI Configuration
+
+### Settings
+
+OpenAI integration is configured in `settings.py`:
+
+```python inventario/settings.py
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+```
+
+### Environment Variables
+
+Add your OpenAI API key to `.env`:
+
+```bash .env
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+<Warning>
+  OpenAI API calls are charged per token. Monitor your usage in the [OpenAI dashboard](https://platform.openai.com/usage) to avoid unexpected costs.
+</Warning>
+
+### Getting an OpenAI API Key
+
+<Steps>
+  <Step title="Create OpenAI Account">
+    Sign up at [platform.openai.com](https://platform.openai.com/) and verify your email.
+  </Step>
+  
+  <Step title="Add Payment Method">
+    Go to **Settings > Billing** and add a payment method.
+    
+    OpenAI requires prepaid credits for API usage.
+  </Step>
+  
+  <Step title="Generate API Key">
+    Navigate to **API Keys** and click **Create new secret key**.
+    
+    Copy the key immediately (it won't be shown again).
+  </Step>
+  
+  <Step title="Add to Environment">
+    Add the key to your `.env` file:
+    ```bash
+    OPENAI_API_KEY=sk-proj-your-key-here
+    ```
+  </Step>
+</Steps>
+
+## AI Service Architecture
+
+Inventario implements two main AI services:
+
+### 1. Dashboard Insights Generator
+
+Location: `applications/cuentas/services/ia_openai.py`
+
+Generates actionable recommendations based on business metrics:
+
+```python applications/cuentas/services/ia_openai.py
+from openai import OpenAI
+from django.conf import settings
+
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+def generar_resumen_ia(contexto):
+    """
+    Genera recomendaciones accionables usando OpenAI
+    """
+    prompt = f"""
+Eres un asistente experto en ventas, inventarios y finanzas para pequeños negocios.
+
+Analiza los siguientes datos y genera recomendaciones CLARAS, CORTAS y ACCIONABLES.
+No expliques teoría. Usa emojis moderados.
+
+DATOS:
+{contexto}
+
+RESPONDE EN ESPAÑOL.
+Formato:
+- Recomendaciones
+- Alertas
+- Oportunidades
+"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Eres un asesor de negocios."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.4,
+        max_tokens=300,
+    )
+    
+    return response.choices[0].message.content
+```
+
+### 2. Advanced Insights Interpreter
+
+Location: `applications/cuentas/services/openai_service.py`
+
+Converts raw metrics into human-readable recommendations:
+
+```python applications/cuentas/services/openai_service.py
+def interpretar_insights_ia(data):
+    """
+    Convierte métricas duras en recomendaciones humanas
+    """
+    prompt = f"""
+Eres un asesor de negocios experto en ventas e inventarios.
+Habla de forma clara, breve y accionable.
+
+Datos del negocio:
+Recomendaciones: {data['recomendaciones']}
+Predicciones: {data['predicciones']}
+Alertas: {data['alertas']}
+
+Genera:
+1. Un resumen ejecutivo (máx 3 líneas)
+2. 3 acciones concretas para hoy
+3. 1 advertencia crítica si aplica
+"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Eres un gerente comercial experto."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.4,
+        max_tokens=300,
+    )
+    
+    return response.choices[0].message.content
+```
+
+## AI Features in Action
+
+### Dashboard AI Insights
+
+The main dashboard (`/dashboard/`) displays AI-generated insights based on:
+
+- **Sales performance**: Daily, weekly, monthly revenue trends
+- **Inventory levels**: Low stock alerts, overstock warnings
+- **Profit margins**: Product profitability analysis
+- **Customer behavior**: Top customers, purchase patterns
+- **Financial health**: Cash flow, expenses vs. revenue
+
+#### Example Usage
+
+```python applications/cuentas/views.py
+from applications.cuentas.services.ia_openai import generar_resumen_ia
+
+# Prepare business context
+contexto = f"""
+Ventas del día: ${ventas_hoy}
+Productos con bajo stock: {productos_bajo_stock}
+Clientes activos: {clientes_activos}
+Ganancia del mes: ${ganancia_mes}
+"""
+
+# Generate AI insights
+insights = generar_resumen_ia(contexto)
+```
+
+#### Sample AI Output
+
+```
+📊 Recomendaciones:
+- Aumenta el pedido de "Producto X" - se está vendiendo 3x más rápido
+- Considera descuentos en "Producto Y" - lleva 45 días sin rotación
+- Tu margen de ganancia subió 12% vs. mes pasado ¡Sigue así!
+
+⚠️ Alertas:
+- 5 productos con stock crítico (menos de 10 unidades)
+- Gastos operativos aumentaron 8% esta semana
+
+💡 Oportunidades:
+- Los clientes de la zona norte compraron 40% más - considera promociones
+- Jueves y viernes son tus mejores días - optimiza inventario para esos días
+```
+
+## Model Selection
+
+Inventario uses **GPT-4o-mini** for cost-effective AI generation:
+
+```python
+model="gpt-4o-mini"
+```
+
+### Why GPT-4o-mini?
+
+<CardGroup cols={2}>
+  <Card title="Cost-Effective" icon="dollar-sign">
+    ~60% cheaper than GPT-4, suitable for frequent dashboard updates
+  </Card>
+  
+  <Card title="Fast Response" icon="bolt">
+    Lower latency for real-time insights generation
+  </Card>
+  
+  <Card title="Sufficient Quality" icon="check">
+    More than adequate for business recommendations and summaries
+  </Card>
+  
+  <Card title="Token Efficient" icon="gauge">
+    Max 300 tokens keeps responses concise and costs low
+  </Card>
+</CardGroup>
+
+### Alternative Models
+
+You can modify the model in the service files:
+
+<CodeGroup>
+
+```python GPT-4o (More Accurate)
+model="gpt-4o"  # Higher quality, higher cost
+```
+
+```python GPT-3.5-Turbo (Faster)
+model="gpt-3.5-turbo"  # Faster, cheaper, lower quality
+```
+
+```python GPT-4-Turbo (Balanced)
+model="gpt-4-turbo"  # Good balance of speed and quality
+```
+
+</CodeGroup>
+
+## AI Parameters
+
+### Temperature
+
+```python
+temperature=0.4
+```
+
+- **Lower (0.0-0.3)**: More deterministic, consistent responses
+- **Current (0.4)**: Balanced creativity with consistency
+- **Higher (0.7-1.0)**: More creative but less predictable
+
+For business recommendations, **0.4 is ideal** - professional yet not robotic.
+
+### Max Tokens
+
+```python
+max_tokens=300
+```
+
+Limits response length to control costs. 300 tokens ≈ 225 words in Spanish.
+
+## Cost Management
+
+### Token Usage Estimation
+
+Per AI insight generation:
+
+- **Input tokens**: ~200-400 (context + prompt)
+- **Output tokens**: 300 (max_tokens limit)
+- **Total**: ~500-700 tokens per request
+
+### Pricing (GPT-4o-mini)
+
+- **Input**: $0.15 / 1M tokens
+- **Output**: $0.60 / 1M tokens
+
+**Cost per insight**: ~$0.0002 - $0.0004 (less than $0.001)
+
+### Cost Optimization Tips
+
+<CardGroup cols={2}>
+  <Card title="Cache Results" icon="database">
+    Cache AI insights for 15-30 minutes to avoid regenerating on every page load:
+    ```python
+    from django.core.cache import cache
+    
+    cache_key = f'ai_insights_{user.id}'
+    insights = cache.get(cache_key)
+    
+    if not insights:
+        insights = generar_resumen_ia(contexto)
+        cache.set(cache_key, insights, 900)  # 15 min
+    ```
+  </Card>
+  
+  <Card title="Conditional Generation" icon="filter">
+    Only generate insights when there's new data:
+    ```python
+    if ventas_nuevas or inventario_actualizado:
+        insights = generar_resumen_ia(contexto)
+    ```
+  </Card>
+  
+  <Card title="Batch Processing" icon="layer-group">
+    Generate insights for all users once per day instead of real-time:
+    ```python
+    # Django management command
+    python manage.py generate_daily_insights
+    ```
+  </Card>
+  
+  <Card title="User Preferences" icon="toggle-on">
+    Let users enable/disable AI features:
+    ```python
+    if user.configuracion.ai_enabled:
+        insights = generar_resumen_ia(contexto)
+    ```
+  </Card>
+</CardGroup>
+
+## Extending AI Features
+
+### Adding New AI Functions
+
+Create new AI-powered features by following the existing pattern:
+
+```python applications/productos/ai_service.py
+from openai import OpenAI
+from django.conf import settings
+
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+def optimizar_inventario(productos):
+    """
+    Genera recomendaciones de inventario usando IA
+    """
+    datos_productos = "\n".join([
+        f"- {p.nombre}: {p.cantidad} unidades, {p.ventas_mes} ventas/mes"
+        for p in productos
+    ])
+    
+    prompt = f"""
+Analiza estos productos y recomienda cuántas unidades comprar:
+
+{datos_productos}
+
+Considera:
+- Velocidad de rotación
+- Stock de seguridad
+- Tendencias estacionales
+
+Responde en formato:
+Producto | Cantidad Sugerida | Razón
+"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "Eres un experto en gestión de inventarios."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,  # More deterministic for inventory
+        max_tokens=500
+    )
+    
+    return response.choices[0].message.content
+```
+
+### Use Cases for AI Expansion
+
+<AccordionGroup>
+  <Accordion title="Price Optimization">
+    Use AI to suggest optimal pricing based on:
+    - Historical sales data
+    - Competitor pricing
+    - Seasonality
+    - Stock levels
+    
+    ```python
+    def sugerir_precios(producto):
+        # Analyze sales velocity, competition, margins
+        # Return AI-suggested pricing strategy
+    ```
+  </Accordion>
+  
+  <Accordion title="Customer Segmentation">
+    Analyze customer behavior and segment for targeted campaigns:
+    
+    ```python
+    def segmentar_clientes(clientes):
+        # VIP customers, at-risk customers, new customers
+        # Return segments with recommended actions
+    ```
+  </Accordion>
+  
+  <Accordion title="Sales Forecasting">
+    Predict future sales based on historical patterns:
+    
+    ```python
+    def predecir_ventas(producto, dias=30):
+        # Analyze trends, seasonality, events
+        # Return predicted sales for next N days
+    ```
+  </Accordion>
+  
+  <Accordion title="Natural Language Queries">
+    Let users ask questions in plain language:
+    
+    ```python
+    def consultar_negocio(pregunta, contexto_negocio):
+        # "¿Cuál es mi producto más rentable?"
+        # "¿Qué debo comprar esta semana?"
+        # Return natural language answer
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+### Graceful Fallbacks
+
+Always handle API failures gracefully:
+
+```python
+def generar_resumen_ia(contexto):
+    try:
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        response = client.chat.completions.create(...)
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error en OpenAI: {e}")
+        return """
+        📊 Insights no disponibles temporalmente.
+        Revisa tu clave API o intenta más tarde.
+        """
+```
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="Invalid API Key">
+    ```
+    openai.AuthenticationError: Incorrect API key provided
+    ```
+    
+    **Solution**: Verify `OPENAI_API_KEY` in `.env` is correct and active.
+  </Accordion>
+  
+  <Accordion title="Rate Limit Exceeded">
+    ```
+    openai.RateLimitError: Rate limit reached for requests
+    ```
+    
+    **Solution**: Implement caching and reduce request frequency. Consider upgrading OpenAI tier.
+  </Accordion>
+  
+  <Accordion title="Insufficient Quota">
+    ```
+    openai.InsufficientQuotaError: You exceeded your current quota
+    ```
+    
+    **Solution**: Add credits to your OpenAI account or switch to a free tier model temporarily.
+  </Accordion>
+</AccordionGroup>
+
+## Testing AI Features
+
+### Manual Testing
+
+Test AI generation from Django shell:
+
+```bash
+python manage.py shell
+```
+
+```python
+>>> from applications.cuentas.services.ia_openai import generar_resumen_ia
+>>> 
+>>> contexto = """
+... Ventas del día: $450,000
+... Productos con bajo stock: 3
+... Clientes activos: 25
+... """
+>>> 
+>>> resultado = generar_resumen_ia(contexto)
+>>> print(resultado)
+```
+
+### Unit Tests
+
+Create tests for AI services:
+
+```python tests/test_ia_service.py
+from django.test import TestCase
+from unittest.mock import patch, MagicMock
+from applications.cuentas.services.ia_openai import generar_resumen_ia
+
+class IAServiceTest(TestCase):
+    @patch('applications.cuentas.services.ia_openai.client')
+    def test_generar_resumen(self, mock_client):
+        # Mock OpenAI response
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "Test insight"
+        mock_client.chat.completions.create.return_value = mock_response
+        
+        # Test function
+        resultado = generar_resumen_ia("contexto de prueba")
+        
+        # Assertions
+        self.assertEqual(resultado, "Test insight")
+        mock_client.chat.completions.create.assert_called_once()
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Reports" icon="gauge" href="/features/reports">
+    See AI insights in reports and analytics
+  </Card>
+  <Card title="Notifications" icon="bell" href="/advanced/notifications">
+    Configure email and SMS alerts
+  </Card>
+</CardGroup>

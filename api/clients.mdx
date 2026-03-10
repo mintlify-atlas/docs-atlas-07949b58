@@ -1,0 +1,516 @@
+---
+title: 'Clients API'
+description: 'Manage customer records and SMS campaigns'
+---
+
+## Overview
+
+The Clients API manages customer records with support for SMS marketing campaigns via Twilio integration.
+
+## Cliente Model (Client)
+
+<ResponseField name="id" type="integer">
+  Unique client identifier (auto-generated)
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Client name (max 150 characters, required)
+</ResponseField>
+
+<ResponseField name="telefono" type="string">
+  Phone number (max 20 characters, optional)
+</ResponseField>
+
+<ResponseField name="documento" type="string">
+  ID/document number (max 20 characters, optional)
+</ResponseField>
+
+<ResponseField name="activo" type="boolean">
+  Active status (default: true)
+</ResponseField>
+
+<ResponseField name="creado" type="datetime">
+  Creation timestamp (auto-generated)
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User who created the client (PROTECT constraint)
+</ResponseField>
+
+## PlantillaSMS Model (SMS Template)
+
+<ResponseField name="id" type="integer">
+  Template identifier
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Template name (max 100 characters)
+</ResponseField>
+
+<ResponseField name="mensaje" type="text">
+  Message template (use `{nombre}` for personalization)
+</ResponseField>
+
+<ResponseField name="activo" type="boolean">
+  Active status (default: true)
+</ResponseField>
+
+<ResponseField name="creado" type="datetime">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User
+</ResponseField>
+
+## CampanaSMS Model (SMS Campaign)
+
+<ResponseField name="id" type="integer">
+  Campaign identifier
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Campaign name (max 200 characters)
+</ResponseField>
+
+<ResponseField name="mensaje" type="text">
+  Message content
+</ResponseField>
+
+<ResponseField name="total_clientes" type="integer">
+  Total recipients (default: 0)
+</ResponseField>
+
+<ResponseField name="enviados_exitosos" type="integer">
+  Successfully sent count (default: 0)
+</ResponseField>
+
+<ResponseField name="enviados_fallidos" type="integer">
+  Failed send count (default: 0)
+</ResponseField>
+
+<ResponseField name="estado" type="string">
+  Campaign status: `pendiente`, `procesando`, `completado`, or `error`
+</ResponseField>
+
+<ResponseField name="creado" type="datetime">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="completado" type="datetime">
+  Completion timestamp (optional)
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User
+</ResponseField>
+
+## SMSLog Model (SMS Log)
+
+<ResponseField name="id" type="integer">
+  Log entry identifier
+</ResponseField>
+
+<ResponseField name="campana" type="integer">
+  Foreign key to CampanaSMS
+</ResponseField>
+
+<ResponseField name="cliente" type="integer">
+  Foreign key to Cliente
+</ResponseField>
+
+<ResponseField name="mensaje" type="text">
+  Message content sent
+</ResponseField>
+
+<ResponseField name="estado" type="string">
+  Send status: `enviado` or `fallido`
+</ResponseField>
+
+<ResponseField name="twilio_sid" type="string">
+  Twilio message SID (max 100 characters, optional)
+</ResponseField>
+
+<ResponseField name="error_mensaje" type="text">
+  Error message if failed (optional)
+</ResponseField>
+
+<ResponseField name="creado" type="datetime">
+  Log timestamp
+</ResponseField>
+
+## List Clients
+
+<Note>
+  Requires authentication. Returns clients owned by the authenticated user.
+</Note>
+
+```bash
+curl -X GET http://localhost:8000/clientes/ \
+  -H "Cookie: sessionid=<your-session>"
+```
+
+### Response
+
+Returns rendered HTML with list of active clients.
+
+## Create Client
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/clientes/nuevo/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "nombre=Maria Gonzalez" \
+  -d "telefono=3001234567" \
+  -d "documento=987654321" \
+  -d "activo=true"
+```
+
+### Request Parameters
+
+<ParamField body="nombre" type="string" required>
+  Client name (max 150 characters)
+</ParamField>
+
+<ParamField body="telefono" type="string">
+  Phone number (max 20 characters)
+</ParamField>
+
+<ParamField body="documento" type="string">
+  ID/document number (max 20 characters)
+</ParamField>
+
+<ParamField body="activo" type="boolean" default="true">
+  Active status
+</ParamField>
+
+### Response
+
+**Success (HTTP 302):** Redirects to `/clientes/` with flash message
+
+**Validation Error (HTTP 200):** Re-renders form with errors
+
+## Create Client (AJAX)
+
+```bash
+curl -X POST http://localhost:8000/clientes/crear/ajax/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{
+    "nombre": "Carlos Ruiz",
+    "telefono": "3009876543",
+    "documento": "123456789"
+  }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "cliente": {
+    "id": 15,
+    "nombre": "Carlos Ruiz",
+    "telefono": "3009876543",
+    "documento": "123456789",
+    "activo": true,
+    "creado": "2024-03-15T10:30:00-05:00"
+  }
+}
+```
+
+**Error:**
+```json
+{
+  "success": false,
+  "errors": {
+    "nombre": ["This field is required."]
+  }
+}
+```
+
+## Update Client
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/clientes/editar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Maria Gonzalez (Updated)" \
+  -d "telefono=3001112222" \
+  -d "activo=true"
+```
+
+### URL Parameters
+
+<ParamField path="pk" type="integer" required>
+  Client ID to update
+</ParamField>
+
+### Response
+
+**Success:** Redirects to clients list
+
+**Not Found (HTTP 404):** Client doesn't exist or doesn't belong to user
+
+## Delete Client
+
+<Warning>
+  Requires authentication and **admin role**. Cannot delete clients referenced in sales (PROTECT constraint).
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/clientes/eliminar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+### URL Parameters
+
+<ParamField path="pk" type="integer" required>
+  Client ID to delete
+</ParamField>
+
+### Response
+
+**Success:** Client deleted, redirects to list
+
+**Protected Error:** Cannot delete due to foreign key constraint (client has sales)
+
+## SMS Templates
+
+### List SMS Templates
+
+```bash
+curl -X GET http://localhost:8000/clientes/plantillas/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+### Get Templates (AJAX)
+
+```bash
+curl -X GET http://localhost:8000/clientes/plantillas-sms/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "plantillas": [
+    {
+      "id": 1,
+      "nombre": "Promoción Mensual",
+      "mensaje": "Hola {nombre}, aprovecha 20% de descuento este mes!"
+    },
+    {
+      "id": 2,
+      "nombre": "Recordatorio",
+      "mensaje": "Hola {nombre}, te esperamos en nuestra tienda!"
+    }
+  ]
+}
+```
+
+### Create SMS Template
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/clientes/plantillas/crear/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Welcome Message" \
+  -d "mensaje=Hola {nombre}, bienvenido a nuestra tienda!" \
+  -d "activo=true"
+```
+
+<ParamField body="nombre" type="string" required>
+  Template name (max 100 characters)
+</ParamField>
+
+<ParamField body="mensaje" type="text" required>
+  Message template. Use `{nombre}` placeholder for personalization.
+</ParamField>
+
+<ParamField body="activo" type="boolean" default="true">
+  Active status
+</ParamField>
+
+### Update SMS Template
+
+```bash
+curl -X POST http://localhost:8000/clientes/plantillas/editar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Welcome Message (Updated)" \
+  -d "mensaje=Hola {nombre}, bienvenido!"
+```
+
+### Delete SMS Template
+
+```bash
+curl -X POST http://localhost:8000/clientes/plantillas/eliminar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+## SMS Campaigns
+
+### Send SMS to Clients
+
+<Warning>
+  Requires Twilio credentials configured in environment variables.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/clientes/enviar-sms/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{
+    "cliente_ids": [1, 2, 3, 5, 8],
+    "mensaje": "Hola {nombre}, aprovecha 20% de descuento este mes!",
+    "nombre_campana": "Promoción Marzo 2024"
+  }'
+```
+
+<ParamField body="cliente_ids" type="array" required>
+  Array of client IDs to send SMS to
+</ParamField>
+
+<ParamField body="mensaje" type="string" required>
+  Message content. Use `{nombre}` for personalization.
+</ParamField>
+
+<ParamField body="nombre_campana" type="string">
+  Campaign name (optional, auto-generated if not provided)
+</ParamField>
+
+### Response
+
+```json
+{
+  "success": true,
+  "campana_id": 10,
+  "total_clientes": 5,
+  "enviados_exitosos": 4,
+  "enviados_fallidos": 1,
+  "detalles": [
+    {
+      "cliente_id": 1,
+      "nombre": "Maria Gonzalez",
+      "estado": "enviado",
+      "twilio_sid": "SM1234567890abcdef"
+    },
+    {
+      "cliente_id": 2,
+      "nombre": "Carlos Ruiz",
+      "estado": "fallido",
+      "error": "Invalid phone number"
+    }
+  ]
+}
+```
+
+### Message Personalization
+
+The `{nombre}` placeholder is replaced with each client's name:
+
+```python
+# Template:
+"Hola {nombre}, aprovecha 20% de descuento!"
+
+# For cliente with nombre="Maria":
+"Hola Maria, aprovecha 20% de descuento!"
+```
+
+## Business Logic
+
+### Client Protection
+
+Clients cannot be deleted if they have associated sales:
+
+```python
+cliente_fk = models.ForeignKey(
+    Cliente,
+    on_delete=models.PROTECT  # Prevents deletion
+)
+```
+
+**Error:** `ProtectedError` exception raised
+
+### Multi-Tenancy
+
+Clients are isolated per user:
+- Admin users see only their own clients
+- Vendedor users see clients owned by their `creado_por` admin
+- Enforced via: `Cliente.objects.filter(usuario=request.user)`
+
+### SMS Campaign Tracking
+
+Each SMS sent creates an `SMSLog` entry:
+- Links to campaign and client
+- Stores Twilio SID for tracking
+- Records success/failure status
+- Logs error messages
+
+Campaign aggregates:
+- `total_clientes` - Recipients count
+- `enviados_exitosos` - Success count
+- `enviados_fallidos` - Failure count
+- `estado` - Overall campaign status
+
+## Example Workflow
+
+```bash
+# 1. Create client
+curl -X POST http://localhost:8000/clientes/nuevo/ \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Laura Mendez" \
+  -d "telefono=+573001234567" \
+  -d "documento=456789123"
+
+# 2. Create SMS template
+curl -X POST http://localhost:8000/clientes/plantillas/crear/ \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=New Product Launch" \
+  -d "mensaje=Hola {nombre}, tenemos nuevos productos en stock!"
+
+# 3. Get available templates
+curl http://localhost:8000/clientes/plantillas-sms/
+
+# 4. Send SMS campaign to multiple clients
+curl -X POST http://localhost:8000/clientes/enviar-sms/ \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{
+    "cliente_ids": [1, 5, 10, 15],
+    "mensaje": "Hola {nombre}, tenemos nuevos productos en stock!",
+    "nombre_campana": "Product Launch - March 2024"
+  }'
+
+# Response shows 4 clients, 3 sent successfully, 1 failed
+
+# 5. Update client status
+curl -X POST http://localhost:8000/clientes/editar/1/ \
+  -H "X-CSRFToken: <token>" \
+  -d "activo=false"  # Deactivate client
+```
+
+## Related Endpoints
+
+- [Sales API](/api/sales) - Client sales transactions
+- See source: `applications/clientes/models.py` and `applications/clientes/views.py`

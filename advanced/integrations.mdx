@@ -1,0 +1,280 @@
+---
+title: 'Third-Party Integrations'
+description: 'Configure Google OAuth, API access, and external service integrations'
+icon: 'plug'
+---
+
+## Overview
+
+Inventario integrates with multiple third-party services to provide authentication, notifications, and AI-powered features. This guide covers configuration and usage of these integrations.
+
+## Google OAuth Setup
+
+Inventario uses **django-allauth** to enable Google OAuth authentication, allowing users to sign in with their Google accounts.
+
+### Configuration
+
+The Google OAuth integration is configured in `settings.py`:
+
+```python inventario/settings.py
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'VERIFIED_EMAIL': True,
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+            'key': ''
+        }
+    }
+}
+```
+
+### Environment Variables
+
+Add these variables to your `.env` file:
+
+```bash
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+<Warning>
+  Never commit your `.env` file to version control. Keep your OAuth credentials secure.
+</Warning>
+
+### Obtaining Google OAuth Credentials
+
+<Steps>
+  <Step title="Create Google Cloud Project">
+    Go to [Google Cloud Console](https://console.cloud.google.com/) and create a new project or select an existing one.
+  </Step>
+  
+  <Step title="Enable Google+ API">
+    Navigate to **APIs & Services > Library** and enable the **Google+ API**.
+  </Step>
+  
+  <Step title="Create OAuth Credentials">
+    Go to **APIs & Services > Credentials** and click **Create Credentials > OAuth client ID**.
+    
+    - Application type: **Web application**
+    - Authorized redirect URIs: `https://yourdomain.com/accounts/google/login/callback/`
+  </Step>
+  
+  <Step title="Copy Credentials">
+    Copy the **Client ID** and **Client Secret** and add them to your `.env` file.
+  </Step>
+</Steps>
+
+### Custom Social Account Adapter
+
+Inventario implements a custom adapter in `applications/cuentas/adapters.py` that:
+
+- **Blocks inactive users** from logging in via Google
+- **Downloads profile photos** from Google accounts (high resolution)
+- **Connects existing accounts** by email matching
+- **Creates new accounts** with admin approval required (inactive by default)
+
+Key features:
+
+```python applications/cuentas/adapters.py
+class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
+    def pre_social_login(self, request, sociallogin):
+        # Match existing users by email
+        # Block inactive users
+        # Update profile photo from Google
+        
+    def save_user(self, request, sociallogin, form=None):
+        # Create new user as inactive
+        # Require admin activation
+```
+
+### User Flow
+
+<Steps>
+  <Step title="User clicks 'Sign in with Google'">
+    User is redirected to Google's OAuth consent screen.
+  </Step>
+  
+  <Step title="Google returns with user data">
+    If email matches existing account → Login directly (if active)
+    
+    If new user → Create account as **inactive**, require admin approval
+  </Step>
+  
+  <Step title="Admin activates account">
+    Admin sets `is_active = True` in Django admin panel.
+  </Step>
+  
+  <Step title="User can login">
+    User can now access the system with their Google account.
+  </Step>
+</Steps>
+
+## API Configuration
+
+### Django REST Framework
+
+Inventario can be extended with API endpoints using Django REST Framework. Current authentication backends:
+
+```python settings.py
+AUTHENTICATION_BACKENDS = (
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
+```
+
+### CSRF Protection
+
+For external API access, configure trusted origins:
+
+```python settings.py
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://127.0.0.1:8000'
+).split(',')
+```
+
+Add to `.env`:
+
+```bash
+CSRF_TRUSTED_ORIGINS=https://yourdomain.com,https://api.yourdomain.com
+```
+
+## Database Configuration
+
+Inventario uses **dj-database-url** for flexible database configuration:
+
+```python settings.py
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600
+    )
+}
+```
+
+### Supported Databases
+
+Set `DATABASE_URL` in your `.env` file:
+
+<CodeGroup>
+
+```bash PostgreSQL
+DATABASE_URL=postgresql://user:password@localhost:5432/inventario
+```
+
+```bash MySQL
+DATABASE_URL=mysql://user:password@localhost:3306/inventario
+```
+
+```bash SQLite
+DATABASE_URL=sqlite:///./db.sqlite3
+```
+
+</CodeGroup>
+
+## Media & Static Files
+
+Inventario uses **WhiteNoise** for static file serving in production:
+
+```python settings.py
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+```
+
+Media files (product images, user avatars) are stored in:
+
+```python
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+```
+
+## Security Settings
+
+### Production Configuration
+
+```python settings.py
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+```
+
+### Environment Variables
+
+```bash .env
+DEBUG=False
+SECRET_KEY=your-secret-key-here
+ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+```
+
+<Warning>
+  Always set `DEBUG=False` in production and use a strong, unique `SECRET_KEY`.
+</Warning>
+
+## Testing Integrations
+
+### Google OAuth
+
+Test the OAuth flow:
+
+1. Navigate to `/accounts/google/login/`
+2. Complete Google sign-in
+3. Verify redirect to dashboard or registration confirmation
+
+### Local Development
+
+For local development, add `http://127.0.0.1:8000` to your Google OAuth redirect URIs:
+
+```
+http://127.0.0.1:8000/accounts/google/login/callback/
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="OAuth redirect mismatch error">
+    Ensure your redirect URI in Google Cloud Console exactly matches:
+    ```
+    https://yourdomain.com/accounts/google/login/callback/
+    ```
+    
+    Include the trailing slash and correct protocol (https in production).
+  </Accordion>
+  
+  <Accordion title="User created but cannot login">
+    Check if the user is marked as **active** in Django admin:
+    ```bash
+    python manage.py shell
+    >>> from applications.cuentas.models import Usuario
+    >>> user = Usuario.objects.get(email='user@example.com')
+    >>> user.is_active
+    False
+    >>> user.is_active = True
+    >>> user.save()
+    ```
+  </Accordion>
+  
+  <Accordion title="Profile photo not downloading">
+    The adapter only downloads real Google profile photos (not default avatars).
+    
+    Photos are saved to `media/fotos_perfil/google_profile_username.jpg`
+    
+    Check logs for photo download status.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Notifications" icon="bell" href="/advanced/notifications">
+    Configure email and SMS notifications
+  </Card>
+  <Card title="AI Features" icon="brain" href="/advanced/ai-features">
+    Enable OpenAI-powered insights
+  </Card>
+</CardGroup>

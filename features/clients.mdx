@@ -1,0 +1,395 @@
+---
+title: 'Client Management'
+description: 'Maintain customer records, track purchase history, and run SMS marketing campaigns'
+icon: 'users'
+---
+
+## Overview
+
+The Client Management feature allows you to maintain a database of your customers, track their purchase history, and engage them with SMS marketing campaigns. This helps build lasting customer relationships and drive repeat business.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Customer Database" icon="address-book">
+    Store customer information including name, phone, and ID documents
+  </Card>
+  <Card title="Purchase History" icon="clock-rotate-left">
+    Link sales to customers to track their buying patterns
+  </Card>
+  <Card title="SMS Campaigns" icon="message">
+    Send bulk SMS messages to customers for promotions and updates
+  </Card>
+  <Card title="Active/Inactive Status" icon="toggle-on">
+    Control which customers appear in active lists
+  </Card>
+</CardGroup>
+
+## Customer Information
+
+Each customer record contains:
+
+- **Name**: Customer's full name
+- **Phone Number**: Mobile number for contact and SMS
+- **Document**: ID or tax identification number
+- **Active Status**: Whether the customer is active or archived
+- **Registration Date**: When the customer was added to the system
+- **Owner**: The admin user who manages this customer
+
+<Note>
+  All customer records are owned by the admin user. Sellers under an admin can access the admin's customer database.
+</Note>
+
+## Adding Customers
+
+### From the Customer List
+
+<Steps>
+  <Step title="Navigate to Clients">
+    Click **Clients** in the main menu
+  </Step>
+  <Step title="Click Add Customer">
+    Click the **New Customer** button
+  </Step>
+  <Step title="Enter Details">
+    Fill in the customer information:
+    - Name (required)
+    - Phone number (optional but recommended for SMS)
+    - Document/ID (optional)
+  </Step>
+  <Step title="Save Customer">
+    Click **Save** to add the customer to your database
+  </Step>
+</Steps>
+
+### During a Sale
+
+You can also create customers while processing a sale:
+
+1. In the sales form, click **"Create New Customer"**
+2. Enter customer details in the popup
+3. The customer is saved and automatically linked to the sale
+
+This is useful for first-time customers who are making a purchase.
+
+## Managing Customers
+
+### Viewing Customers
+
+The customer list displays:
+- Customer name
+- Contact information
+- Registration date
+- Active status
+- Quick action buttons
+
+### Searching Customers
+
+Find customers by searching:
+- Name
+- Phone number
+- Document number
+
+The search works across all fields and shows real-time results.
+
+### Editing Customer Information
+
+<Steps>
+  <Step title="Find Customer">
+    Locate the customer in the list or search for them
+  </Step>
+  <Step title="Click Edit">
+    Click the **Edit** button next to the customer
+  </Step>
+  <Step title="Update Details">
+    Modify any information:
+    - Name
+    - Phone number
+    - Document
+    - Active status
+  </Step>
+  <Step title="Save Changes">
+    Click **Save** to update the customer record
+  </Step>
+</Steps>
+
+### Deactivating Customers
+
+Instead of deleting customers, you can mark them as inactive:
+
+1. Edit the customer
+2. Uncheck **"Active"**
+3. Save the changes
+
+<Info>
+  Inactive customers don't appear in search results during sales but their purchase history is preserved.
+</Info>
+
+### Deleting Customers
+
+<Warning>
+  You cannot delete customers who have purchase history. You must deactivate them instead.
+</Warning>
+
+To delete a customer with no purchase history:
+1. Click **Delete** next to the customer
+2. Confirm the deletion
+
+## Purchase History
+
+### Linking Sales to Customers
+
+When you create a sale and select a registered customer, the sale is linked to their customer record. This enables:
+
+- Purchase history tracking
+- Customer lifetime value calculation
+- Personalized service
+- Targeted marketing
+
+### Viewing Customer Purchases
+
+To see what a customer has bought:
+1. Navigate to the customer details
+2. View linked sales
+3. See total amount spent
+4. Review purchase dates and products
+
+<Tip>
+  Use purchase history to identify your best customers and reward loyalty.
+</Tip>
+
+## SMS Marketing
+
+### Overview
+
+Inventario includes SMS campaign functionality powered by Twilio, allowing you to send bulk messages to your customers.
+
+### Setting Up SMS
+
+Before using SMS features:
+1. Configure Twilio credentials in system settings
+2. Verify your Twilio account has sufficient credits
+3. Ensure customer phone numbers are in correct format
+
+### SMS Templates
+
+Create reusable message templates:
+
+<Steps>
+  <Step title="Navigate to Templates">
+    Go to **Clients > SMS Templates**
+  </Step>
+  <Step title="Create Template">
+    Click **New Template**
+  </Step>
+  <Step title="Design Message">
+    - Enter template name
+    - Write your message
+    - Use {nombre} to personalize with customer name
+  </Step>
+  <Step title="Save Template">
+    Save the template for use in campaigns
+  </Step>
+</Steps>
+
+**Example Template:**
+```
+Hola {nombre}! Tenemos una promoción especial este fin de semana. 20% de descuento en todos los productos. Te esperamos!
+```
+
+When sent, `{nombre}` is replaced with each customer's actual name.
+
+### Creating SMS Campaigns
+
+<Steps>
+  <Step title="Start New Campaign">
+    Navigate to **Clients > SMS Campaigns**
+  </Step>
+  <Step title="Name Your Campaign">
+    Give your campaign a descriptive name (e.g., "Weekend Sale 2024")
+  </Step>
+  <Step title="Choose Recipients">
+    Select which customers to target:
+    - All active customers
+    - Specific customer segment
+    - Customers with phone numbers
+  </Step>
+  <Step title="Write or Select Message">
+    Either:
+    - Choose a saved template
+    - Write a custom message
+    - Personalize with customer name
+  </Step>
+  <Step title="Review and Send">
+    - Preview the message
+    - Confirm recipient count
+    - Click **Send Campaign**
+  </Step>
+</Steps>
+
+### Campaign Status
+
+Campaigns go through these states:
+
+- **Pending**: Campaign created but not yet sent
+- **Processing**: Messages are being sent
+- **Completed**: All messages sent
+- **Error**: An error occurred during sending
+
+### Campaign Results
+
+After a campaign runs, view:
+- Total customers targeted
+- Successfully sent messages
+- Failed messages
+- Failure reasons (invalid number, insufficient credits, etc.)
+
+### SMS Logs
+
+Each SMS sent is logged with:
+- Customer name and number
+- Message content
+- Delivery status
+- Twilio message ID
+- Error messages (if failed)
+- Timestamp
+
+<Info>
+  SMS logs help you track campaign performance and troubleshoot delivery issues.
+</Info>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Collect Customer Information">
+    Train your staff to:
+    - Ask for customer details at checkout
+    - Explain benefits (special offers, promotions)
+    - Make it quick and easy
+    - Respect privacy preferences
+    
+    The more complete your customer database, the more effective your marketing.
+  </Accordion>
+  
+  <Accordion title="Keep Phone Numbers Updated">
+    Phone numbers are essential for SMS campaigns:
+    - Verify numbers at registration
+    - Update when customers mention changes
+    - Use proper format (include country code)
+    - Remove invalid numbers
+  </Accordion>
+  
+  <Accordion title="Segment Your Customers">
+    Not all customers want the same messages:
+    - Track purchase preferences
+    - Note customer interests
+    - Send relevant promotions
+    - Respect communication preferences
+  </Accordion>
+  
+  <Accordion title="SMS Campaign Tips">
+    Effective SMS marketing:
+    - Keep messages short and clear
+    - Include a call to action
+    - Personalize with customer name
+    - Don't over-send (weekly at most)
+    - Include opt-out information
+    - Send at appropriate times (9am-8pm)
+  </Accordion>
+  
+  <Accordion title="Use Active/Inactive Status">
+    Proper status management:
+    - Mark inactive customers who stopped buying
+    - Keep records for purchase history
+    - Exclude inactive from campaigns
+    - Occasionally re-engage inactive customers
+  </Accordion>
+  
+  <Accordion title="Track Campaign Performance">
+    Monitor your SMS campaigns:
+    - Review delivery rates
+    - Track response/redemption
+    - Test different messages
+    - Learn what works
+    - Adjust strategy accordingly
+  </Accordion>
+</AccordionGroup>
+
+## SMS Campaign Ideas
+
+### Promotional Campaigns
+- Weekend sales and special offers
+- New product arrivals
+- Seasonal promotions
+- Clearance events
+- Bundle deals
+
+### Relationship Building
+- Birthday greetings
+- Thank you messages
+- Loyalty rewards
+- Customer appreciation
+- Anniversary offers
+
+### Informational
+- Store hours changes
+- Holiday schedules
+- New services
+- Product availability
+- Important announcements
+
+<Tip>
+  Start with simple promotional campaigns and expand to more sophisticated segmentation as you learn what works.
+</Tip>
+
+## Privacy and Compliance
+
+### Best Practices
+
+- **Get Consent**: Ask permission before adding customers to SMS lists
+- **Provide Opt-Out**: Include unsubscribe instructions
+- **Respect Privacy**: Don't share customer data
+- **Secure Storage**: Customer data is encrypted and protected
+- **Legal Compliance**: Follow local regulations for SMS marketing
+
+<Warning>
+  Always comply with your country's SMS marketing regulations. This may include obtaining explicit consent and providing opt-out mechanisms.
+</Warning>
+
+## Troubleshooting
+
+### Customer Not Appearing in Search
+
+If you can't find a customer:
+1. Check if they're marked as inactive
+2. Try searching by phone or document
+3. Verify the correct admin account
+4. Check for typos in search terms
+
+### SMS Not Sending
+
+Common SMS issues:
+- **Invalid phone number**: Verify format includes country code
+- **Insufficient Twilio credits**: Add credits to your Twilio account
+- **Invalid Twilio credentials**: Check configuration settings
+- **Customer has no phone number**: Update customer record
+
+### Can't Delete Customer
+
+If deletion fails:
+- Customer has linked sales (use deactivate instead)
+- Insufficient permissions (must be admin)
+- Database constraint preventing deletion
+
+### SMS Campaign Stuck in Processing
+
+If a campaign doesn't complete:
+1. Check SMS logs for errors
+2. Verify Twilio API is responding
+3. Check for large recipient lists (may take time)
+4. Contact support if issue persists
+
+## Related Features
+
+- [Sales](/features/sales) - Link customer records to sales transactions
+- [Reports](/features/reports) - Analyze customer purchase patterns

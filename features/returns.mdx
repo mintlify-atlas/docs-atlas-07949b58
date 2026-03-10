@@ -1,0 +1,430 @@
+---
+title: 'Returns & Refunds'
+description: 'Process customer returns and supplier refunds with automatic inventory adjustments'
+icon: 'rotate-left'
+---
+
+## Overview
+
+The Returns feature allows you to process both customer returns (sales) and supplier returns (purchases) while automatically adjusting inventory levels and maintaining accurate records.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Customer Returns" icon="user-xmark">
+    Process returns from customers and restore inventory
+  </Card>
+  <Card title="Supplier Returns" icon="truck-arrow-right">
+    Return defective or incorrect items to suppliers
+  </Card>
+  <Card title="Partial Returns" icon="percent">
+    Return some or all items from a transaction
+  </Card>
+  <Card title="Automatic Inventory" icon="boxes">
+    Stock levels update automatically with returns
+  </Card>
+</CardGroup>
+
+## Customer Returns (Sales)
+
+### What is a Customer Return?
+
+A customer return occurs when:
+- Customer changes their mind
+- Product is defective or damaged
+- Wrong item was sold
+- Customer is unsatisfied
+- Any other reason for returning purchased items
+
+### Return Information
+
+Each customer return contains:
+- **Original Sale**: Link to the sale being returned
+- **Customer**: The customer making the return
+- **Return Date**: Automatically recorded
+- **Products Returned**: Which items and quantities
+- **Return Amount**: Total value being refunded
+- **Reason**: Why the items are being returned
+- **Processed By**: User who processed the return
+
+### Creating a Customer Return
+
+<Steps>
+  <Step title="Find the Original Sale">
+    Navigate to the sales list and locate the sale being returned
+  </Step>
+  <Step title="Click Process Return">
+    Click the **Return** button next to the sale
+  </Step>
+  <Step title="Select Products">
+    Choose which products from the sale are being returned:
+    - Select the product
+    - Enter quantity being returned (can be less than originally sold)
+    - Verify the price
+  </Step>
+  <Step title="Enter Return Reason">
+    Provide a reason for the return (optional but recommended)
+  </Step>
+  <Step title="Complete Return">
+    Click **Process Return** to:
+    - Create the return record
+    - Restore inventory
+    - Calculate refund amount
+  </Step>
+</Steps>
+
+### What Happens During a Return
+
+When you process a customer return:
+
+1. **Inventory Restoration**: Product stock increases by returned quantity
+2. **Return Record**: A complete return record is created
+3. **Refund Calculation**: Total refund amount is calculated
+4. **Sale Link**: Return is linked to original sale for tracking
+5. **Customer Record**: Return appears in customer history
+
+<Info>
+  The refund amount is calculated based on the original sale price, including IVA.
+</Info>
+
+### Partial Returns
+
+You don't have to return everything from a sale:
+
+**Example:**
+- Original sale: 5 units of Product A, 3 units of Product B
+- Customer returns: 2 units of Product A only
+- System processes partial return for those 2 units
+- Original sale record remains intact
+
+<Tip>
+  Partial returns are common. The system handles them automatically, adjusting only the returned items.
+</Tip>
+
+## Supplier Returns (Purchases)
+
+### What is a Supplier Return?
+
+A supplier return occurs when you return items to a supplier due to:
+- Defective products
+- Incorrect items received
+- Damaged during shipping
+- Quality issues
+- Overstocked items (if supplier accepts)
+
+### Return Information
+
+Each supplier return contains:
+- **Original Purchase**: Link to the purchase being returned
+- **Supplier**: The supplier receiving the return
+- **Return Date**: Automatically recorded
+- **Products Returned**: Which items and quantities
+- **Return Amount**: Total value being returned
+- **Reason**: Why items are being returned
+- **Processed By**: User who processed the return
+
+### Creating a Supplier Return
+
+<Steps>
+  <Step title="Find the Original Purchase">
+    Navigate to the purchase list and locate the purchase
+  </Step>
+  <Step title="Click Process Return">
+    Click the **Return** button next to the purchase
+  </Step>
+  <Step title="Select Products">
+    Choose which products are being returned:
+    - Select the product
+    - Enter quantity being returned
+    - Verify the cost
+  </Step>
+  <Step title="Enter Return Reason">
+    Explain why items are being returned (recommended for supplier communication)
+  </Step>
+  <Step title="Complete Return">
+    Click **Process Return** to:
+    - Create the return record
+    - Decrease inventory
+    - Calculate return amount
+  </Step>
+</Steps>
+
+### What Happens During a Supplier Return
+
+When you process a supplier return:
+
+1. **Inventory Reduction**: Product stock decreases by returned quantity
+2. **Return Record**: Complete return record is created
+3. **Amount Calculation**: Total return amount calculated (with IVA)
+4. **Purchase Link**: Return linked to original purchase
+5. **Supplier Record**: Return appears in supplier history
+
+<Warning>
+  Supplier returns decrease your inventory. Make sure you physically return the items before processing the return in the system.
+</Warning>
+
+## Managing Returns
+
+### Viewing Return History
+
+Access return records:
+
+**Customer Returns:**
+- Navigate to **Sales > Returns**
+- View all customer returns
+- See return dates, customers, and amounts
+
+**Supplier Returns:**
+- Navigate to **Purchases > Returns**  
+- View all supplier returns
+- See return dates, suppliers, and amounts
+
+### Return Details
+
+Click on any return to view:
+- Complete product breakdown
+- Quantities and prices
+- Original transaction reference
+- Return reason
+- Processing user and date
+- Total refund amount
+
+### Return Reports
+
+Track returns in reporting:
+- Returns are recorded separately from sales/purchases
+- Track return rates over time
+- Identify problematic products
+- Monitor supplier quality issues
+
+<Note>
+  Returns do not modify the original sale or purchase record. They create a separate return record linked to the original transaction.
+</Note>
+
+## Return Policies
+
+### Setting Return Policies
+
+While Inventario processes returns mechanically, you should establish clear policies:
+
+**Customer Return Policy:**
+- Time limit for returns (e.g., 30 days)
+- Condition requirements (unopened, unused)
+- Refund method (cash, credit, exchange)
+- Which items can/cannot be returned
+- Restocking fees (if applicable)
+
+**Supplier Return Policy:**
+- Defective product procedures
+- Return authorization process
+- Return shipping responsibility
+- Timeframe for returns
+- Refund or credit terms
+
+<Tip>
+  Display your return policy clearly in your store and train staff to follow it consistently.
+</Tip>
+
+## Inventory Impact
+
+### Customer Returns (Increase Stock)
+
+When customers return items:
+- Stock increases by returned quantity
+- Items become available for resale
+- Inventory value increases
+- Product is back in your catalog
+
+**Before Return:**
+- Product A stock: 10 units
+
+**Customer returns 3 units:**
+- Product A stock: 13 units
+
+### Supplier Returns (Decrease Stock)
+
+When you return items to suppliers:
+- Stock decreases by returned quantity
+- Items removed from available inventory
+- Inventory value decreases
+- Products no longer in your possession
+
+**Before Return:**
+- Product B stock: 25 units
+
+**Return 5 units to supplier:**
+- Product B stock: 20 units
+
+<Warning>
+  Both types of returns automatically adjust inventory. You don't need to manually update stock levels.
+</Warning>
+
+## Financial Impact
+
+### Return Amounts
+
+The system calculates return amounts based on:
+
+**Customer Returns:**
+- Original sale price (including IVA)
+- Quantity being returned
+- Refund = Original Unit Price × Returned Quantity
+
+**Supplier Returns:**
+- Original purchase cost (including IVA)
+- Quantity being returned
+- Credit Expected = Original Unit Cost × Returned Quantity
+
+### Impact on Reports
+
+Returns affect various reports:
+- **Profit Reports**: Returns reduce revenue
+- **Inventory Reports**: Stock levels reflect returns
+- **Supplier Reports**: Credits from returns are tracked
+- **Customer Reports**: Return history is maintained
+
+<Info>
+  While the system tracks return amounts, actual refund processing (giving money back) is handled outside the system based on your payment methods.
+</Info>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Document Return Reasons">
+    Recording why items are returned helps:
+    - Identify quality issues
+    - Track problematic products
+    - Improve supplier relationships
+    - Make better purchasing decisions
+    - Train staff on product knowledge
+  </Accordion>
+  
+  <Accordion title="Inspect Returned Items">
+    Before processing a return:
+    - Physically inspect the item
+    - Verify it matches the return claim
+    - Check for damage
+    - Determine if it can be resold
+    - Document condition if not resalable
+  </Accordion>
+  
+  <Accordion title="Process Returns Promptly">
+    Quick return processing:
+    - Improves customer satisfaction
+    - Keeps inventory accurate
+    - Maintains good supplier relationships
+    - Prevents tracking errors
+    - Shows professionalism
+  </Accordion>
+  
+  <Accordion title="Track Return Rates">
+    Monitor returns to identify:
+    - Products with quality issues
+    - Unreliable suppliers
+    - Need for better product descriptions
+    - Training opportunities for staff
+    - Pricing or positioning problems
+  </Accordion>
+  
+  <Accordion title="Communicate with Suppliers">
+    For supplier returns:
+    - Contact supplier before processing
+    - Get return authorization if required
+    - Document agreement on terms
+    - Track expected credits
+    - Follow up on refunds
+  </Accordion>
+  
+  <Accordion title="Set Clear Expectations">
+    For customers:
+    - Communicate return policy clearly
+    - Train staff on policy
+    - Be consistent in application
+    - Handle exceptions carefully
+    - Document unusual situations
+  </Accordion>
+</AccordionGroup>
+
+## Common Return Scenarios
+
+### Defective Product
+
+1. Customer reports defect
+2. Inspect item to verify
+3. Process return in system
+4. Refund customer
+5. Consider returning to supplier
+6. Note defect reason for tracking
+
+### Wrong Item Sold
+
+1. Verify the error
+2. Process return for wrong item
+3. Process new sale for correct item
+4. Both transactions tracked properly
+5. Review to prevent future errors
+
+### Change of Mind
+
+1. Verify item within return period
+2. Check item condition
+3. Process return if policy allows
+4. Issue refund per policy
+5. Restock item for resale
+
+### Supplier Quality Issue
+
+1. Document the problem
+2. Contact supplier
+3. Get return authorization
+4. Process return in system
+5. Ship items back
+6. Track expected credit
+7. Follow up on refund
+
+## Troubleshooting
+
+### Can't Process Return
+
+If return processing fails:
+1. Verify you're logged in as Admin
+2. Confirm original transaction exists
+3. Check quantities don't exceed original sale/purchase
+4. Ensure products still exist in catalog
+5. Try refreshing the page
+
+### Stock Not Updating
+
+If inventory doesn't adjust after return:
+1. Verify return was saved successfully
+2. Check return details show correct quantities
+3. Refresh the product list
+4. Review product stock history
+
+### Return Amount Seems Wrong
+
+If calculated return amount doesn't match expectations:
+1. Remember amounts include 19% IVA
+2. Verify returned quantity is correct
+3. Check original transaction prices
+4. Confirm all returned items are included
+
+### Can't Find Original Transaction
+
+If you can't locate the sale/purchase to return:
+1. Search by customer/supplier name
+2. Search by date range
+3. Check if transaction was deleted
+4. Verify you're logged in with correct account
+5. Try searching by transaction ID
+
+<Tip>
+  If the original transaction was deleted, you cannot process a formal return. You may need to manually adjust inventory and record the refund separately.
+</Tip>
+
+## Related Features
+
+- [Sales](/features/sales) - Original transactions for customer returns
+- [Purchases](/features/purchases) - Original transactions for supplier returns  
+- [Products](/features/products) - Inventory affected by returns
+- [Reports](/features/reports) - Track return rates and impacts

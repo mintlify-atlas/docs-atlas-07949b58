@@ -1,0 +1,899 @@
+---
+title: 'Installation & Deployment'
+description: 'Complete guide to deploying Inventario on Railway, Render, or your own server'
+icon: 'server'
+---
+
+## Overview
+
+Inventario is a Django 5.2 application designed for easy deployment on cloud platforms or traditional servers. This guide covers local development setup, environment configuration, and production deployment.
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Python" icon="python">
+    **Version:** 3.11.9 or higher
+    
+    Required for Django 5.2 compatibility
+  </Card>
+
+  <Card title="Database" icon="database">
+    **Production:** PostgreSQL 12+
+    
+    **Development:** SQLite (included)
+  </Card>
+
+  <Card title="Memory" icon="memory">
+    **Minimum:** 512 MB RAM
+    
+    **Recommended:** 1 GB+ for production
+  </Card>
+
+  <Card title="Storage" icon="hard-drive">
+    **Minimum:** 500 MB
+    
+    Includes dependencies, static files, and media uploads
+  </Card>
+</CardGroup>
+
+## Dependencies
+
+The application requires the following key packages:
+
+```txt requirements.txt
+Django==5.2.6
+django-allauth==65.14.3          # Google OAuth & authentication
+django-widget-tweaks==1.5.1      # Form rendering utilities
+gunicorn==25.1.0                  # Production WSGI server
+whitenoise==6.11.0                # Static file serving
+psycopg2-binary==2.9.11           # PostgreSQL adapter
+dj-database-url==3.1.2            # Database URL parsing
+python-dotenv==1.2.1              # Environment variable management
+openai==2.21.0                    # AI-powered insights
+twilio==9.10.1                    # SMS notifications
+Pillow==12.1.1                    # Image processing
+reportlab==4.4.10                 # PDF generation
+barcode==1.0.4                    # Barcode generation
+pandas==3.0.0                     # Data analysis for reports
+resend==2.0.0                     # Email service
+```
+
+## Environment Variables
+
+Create a `.env` file in the project root with the following configuration:
+
+<CodeGroup>
+
+```bash .env (Production)
+# Core Django Settings
+DEBUG=False
+SECRET_KEY=your-secret-key-here-min-50-characters
+ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+CSRF_TRUSTED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+
+# Database (PostgreSQL)
+DATABASE_URL=postgresql://user:password@host:5432/database_name
+
+# Email Configuration (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+DEFAULT_FROM_EMAIL=noreply@yourdomain.com
+
+# Google OAuth (Optional)
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# AI Features (Optional)
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
+
+# SMS Notifications (Optional)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+TWILIO_PHONE_NUMBER=+1234567890
+
+# Security
+SESSION_COOKIE_SECURE=True
+CSRF_COOKIE_SECURE=True
+```
+
+```bash .env (Development)
+# Core Django Settings
+DEBUG=True
+SECRET_KEY=django-insecure-development-key-change-in-production
+ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
+
+# Database (SQLite - default)
+# DATABASE_URL is not required for development
+
+# Email Configuration (Optional for dev)
+RESEND_API_KEY=
+DEFAULT_FROM_EMAIL=dev@localhost
+
+# Google OAuth (Optional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# AI Features (Optional)
+OPENAI_API_KEY=
+
+# Security (disabled for dev)
+SESSION_COOKIE_SECURE=False
+CSRF_COOKIE_SECURE=False
+```
+
+</CodeGroup>
+
+### Configuration Breakdown
+
+<AccordionGroup>
+  <Accordion title="SECRET_KEY - Required">
+    Django's cryptographic signing key. Generate a secure random string:
+    
+    ```python
+    from django.core.management.utils import get_random_secret_key
+    print(get_random_secret_key())
+    ```
+    
+    **Never commit this to version control!**
+  </Accordion>
+
+  <Accordion title="DATABASE_URL - Production Required">
+    Database connection string parsed by `dj-database-url`:
+    
+    ```python
+    # From inventario/settings.py:79-84
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+            conn_max_age=600
+        )
+    }
+    ```
+    
+    **Format:** `postgresql://username:password@host:port/database`
+    
+    If not provided, defaults to SQLite (dev only).
+  </Accordion>
+
+  <Accordion title="Google OAuth - Optional">
+    Enable "Sign in with Google" functionality:
+    
+    1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+    2. Create a new project or select existing
+    3. Enable Google+ API
+    4. Create OAuth 2.0 credentials
+    5. Add authorized redirect URI: `https://yourdomain.com/accounts/google/login/callback/`
+    
+    ```python
+    # Configuration from inventario/settings.py:130-141
+    SOCIALACCOUNT_PROVIDERS = {
+        'google': {
+            'SCOPE': ['profile', 'email'],
+            'AUTH_PARAMS': {'access_type': 'online'},
+            'VERIFIED_EMAIL': True,
+            'APP': {
+                'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+                'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+                'key': ''
+            }
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="OpenAI API Key - Optional">
+    Powers AI-driven dashboard insights and recommendations:
+    
+    - Predictive analytics for sales trends
+    - Stock replenishment suggestions
+    - Customer behavior analysis
+    - Automated report summaries
+    
+    Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+  </Accordion>
+
+  <Accordion title="Twilio Configuration - Optional">
+    Enable SMS notifications for:
+    - Low stock alerts
+    - Daily sales summaries
+    - Order confirmations
+    
+    Sign up at [Twilio](https://www.twilio.com/) and get your credentials from the dashboard.
+  </Accordion>
+</AccordionGroup>
+
+## Local Development Setup
+
+<Steps>
+  <Step title="Clone Repository">
+    ```bash
+    git clone <repository-url>
+    cd inventario
+    ```
+  </Step>
+
+  <Step title="Create Virtual Environment">
+    ```bash
+    python3.11 -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    ```bash
+    pip install -r requirements.txt
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    Copy the development `.env` template:
+    ```bash
+    cp _env .env
+    ```
+    
+    Edit `.env` and set minimum required variables:
+    - `DEBUG=True`
+    - `SECRET_KEY=<generate-one>`
+  </Step>
+
+  <Step title="Run Database Migrations">
+    ```bash
+    python manage.py migrate
+    ```
+    
+    This creates the SQLite database and all required tables.
+  </Step>
+
+  <Step title="Create Superuser">
+    ```bash
+    python manage.py createsuperuser
+    ```
+    
+    Enter username, email, and password. This account has full admin access.
+  </Step>
+
+  <Step title="Collect Static Files">
+    ```bash
+    python manage.py collectstatic --no-input
+    ```
+    
+    Gathers all static files (CSS, JS, images) into `staticfiles/` directory.
+  </Step>
+
+  <Step title="Run Development Server">
+    ```bash
+    python manage.py runserver
+    ```
+    
+    Access the application at `http://127.0.0.1:8000`
+    
+    Admin panel: `http://127.0.0.1:8000/admin/`
+  </Step>
+</Steps>
+
+## Production Deployment
+
+### Option 1: Railway Deployment
+
+<Steps>
+  <Step title="Prepare Project">
+    Ensure these files exist in your repository:
+    
+    **Procfile:**
+    ```Procfile
+    web: gunicorn inventario.wsgi:application --log-file - --workers 2 --timeout 120
+    ```
+    
+    **runtime.txt:**
+    ```txt
+    python-3.11.9
+    ```
+  </Step>
+
+  <Step title="Create Railway Project">
+    1. Go to [Railway.app](https://railway.app/)
+    2. Click **New Project** → **Deploy from GitHub repo**
+    3. Select your repository
+    4. Railway auto-detects Django and Python version
+  </Step>
+
+  <Step title="Add PostgreSQL Database">
+    1. In your Railway project, click **New** → **Database** → **Add PostgreSQL**
+    2. Railway automatically creates `DATABASE_URL` environment variable
+    3. The database is linked to your application
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    In Railway dashboard, add all production environment variables:
+    
+    ```bash
+    DEBUG=False
+    SECRET_KEY=<generate-secure-key>
+    ALLOWED_HOSTS=${{RAILWAY_PUBLIC_DOMAIN}}
+    CSRF_TRUSTED_ORIGINS=https://${{RAILWAY_PUBLIC_DOMAIN}}
+    DATABASE_URL=${{DATABASE_URL}}  # Auto-provided by Railway
+    RESEND_API_KEY=<your-resend-key>
+    DEFAULT_FROM_EMAIL=noreply@yourdomain.com
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    Railway automatically deploys on every push to your main branch.
+    
+    **Build process:**
+    1. Installs dependencies from `requirements.txt`
+    2. Runs migrations automatically
+    3. Collects static files
+    4. Starts Gunicorn server
+    
+    Monitor deployment in Railway dashboard logs.
+  </Step>
+
+  <Step title="Configure Custom Domain (Optional)">
+    1. In Railway project settings, go to **Domains**
+    2. Add your custom domain
+    3. Update DNS records as shown
+    4. Update `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` with your domain
+  </Step>
+</Steps>
+
+### Option 2: Render Deployment
+
+<Steps>
+  <Step title="Prepare Build Script">
+    Create `build.sh` in project root:
+    
+    ```bash build.sh
+    #!/usr/bin/env bash
+    set -o errexit
+    
+    echo "📦 Installing dependencies..."
+    pip install -r requirements.txt
+    
+    echo "📁 Collecting static files..."
+    python manage.py collectstatic --no-input
+    
+    echo "🗄️ Running migrations..."
+    python manage.py migrate
+    
+    echo "🌐 Configuring Site domain..."
+    python manage.py shell -c "
+    from django.contrib.sites.models import Site
+    site, _ = Site.objects.get_or_create(id=1)
+    site.domain = 'yourdomain.com'
+    site.name = 'Inventario'
+    site.save()
+    "
+    
+    echo "✅ Build completed successfully."
+    ```
+    
+    Make it executable:
+    ```bash
+    chmod +x build.sh
+    ```
+  </Step>
+
+  <Step title="Create Render Web Service">
+    1. Go to [Render Dashboard](https://dashboard.render.com/)
+    2. Click **New** → **Web Service**
+    3. Connect your GitHub/GitLab repository
+    4. Configure:
+       - **Name:** inventario
+       - **Environment:** Python 3
+       - **Build Command:** `./build.sh`
+       - **Start Command:** `gunicorn inventario.wsgi:application --workers 2 --timeout 120`
+  </Step>
+
+  <Step title="Add PostgreSQL Database">
+    1. In Render dashboard, click **New** → **PostgreSQL**
+    2. Create database
+    3. Copy the **Internal Database URL**
+    4. Add to your web service as `DATABASE_URL` environment variable
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    In web service **Environment** tab, add:
+    
+    ```bash
+    PYTHON_VERSION=3.11.9
+    DEBUG=False
+    SECRET_KEY=<generate-secure-key>
+    ALLOWED_HOSTS=.onrender.com,yourdomain.com
+    CSRF_TRUSTED_ORIGINS=https://your-service.onrender.com
+    DATABASE_URL=<internal-database-url>
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    Render automatically builds and deploys:
+    1. Runs `build.sh`
+    2. Executes migrations
+    3. Collects static files
+    4. Starts Gunicorn
+    
+    Monitor in **Logs** tab.
+  </Step>
+</Steps>
+
+### Option 3: Traditional Server (Ubuntu)
+
+<Steps>
+  <Step title="Prepare Server">
+    ```bash
+    # Update system
+    sudo apt update && sudo apt upgrade -y
+    
+    # Install Python and dependencies
+    sudo apt install python3.11 python3.11-venv python3-pip postgresql nginx -y
+    ```
+  </Step>
+
+  <Step title="Setup PostgreSQL">
+    ```bash
+    # Start PostgreSQL
+    sudo systemctl start postgresql
+    sudo systemctl enable postgresql
+    
+    # Create database and user
+    sudo -u postgres psql
+    ```
+    
+    In PostgreSQL shell:
+    ```sql
+    CREATE DATABASE inventario_db;
+    CREATE USER inventario_user WITH PASSWORD 'secure_password';
+    ALTER ROLE inventario_user SET client_encoding TO 'utf8';
+    ALTER ROLE inventario_user SET default_transaction_isolation TO 'read committed';
+    ALTER ROLE inventario_user SET timezone TO 'America/Bogota';
+    GRANT ALL PRIVILEGES ON DATABASE inventario_db TO inventario_user;
+    \q
+    ```
+  </Step>
+
+  <Step title="Deploy Application">
+    ```bash
+    # Create application directory
+    sudo mkdir -p /var/www/inventario
+    cd /var/www/inventario
+    
+    # Clone repository
+    sudo git clone <repository-url> .
+    
+    # Create virtual environment
+    sudo python3.11 -m venv venv
+    sudo chown -R $USER:$USER /var/www/inventario
+    source venv/bin/activate
+    
+    # Install dependencies
+    pip install -r requirements.txt
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    ```bash
+    # Create .env file
+    nano .env
+    ```
+    
+    Add production configuration:
+    ```bash
+    DEBUG=False
+    SECRET_KEY=<generate-secure-key>
+    ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+    DATABASE_URL=postgresql://inventario_user:secure_password@localhost:5432/inventario_db
+    CSRF_TRUSTED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+    ```
+  </Step>
+
+  <Step title="Initialize Database">
+    ```bash
+    # Run migrations
+    python manage.py migrate
+    
+    # Collect static files
+    python manage.py collectstatic --no-input
+    
+    # Create superuser
+    python manage.py createsuperuser
+    ```
+  </Step>
+
+  <Step title="Configure Gunicorn">
+    Create systemd service file:
+    ```bash
+    sudo nano /etc/systemd/system/inventario.service
+    ```
+    
+    ```ini
+    [Unit]
+    Description=Inventario Gunicorn Daemon
+    After=network.target
+    
+    [Service]
+    User=www-data
+    Group=www-data
+    WorkingDirectory=/var/www/inventario
+    EnvironmentFile=/var/www/inventario/.env
+    ExecStart=/var/www/inventario/venv/bin/gunicorn \
+              --workers 3 \
+              --bind unix:/var/www/inventario/inventario.sock \
+              --timeout 120 \
+              inventario.wsgi:application
+    
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    
+    Enable and start service:
+    ```bash
+    sudo systemctl start inventario
+    sudo systemctl enable inventario
+    sudo systemctl status inventario
+    ```
+  </Step>
+
+  <Step title="Configure Nginx">
+    Create Nginx configuration:
+    ```bash
+    sudo nano /etc/nginx/sites-available/inventario
+    ```
+    
+    ```nginx
+    server {
+        listen 80;
+        server_name yourdomain.com www.yourdomain.com;
+        
+        client_max_body_size 10M;
+        
+        location = /favicon.ico { access_log off; log_not_found off; }
+        
+        location /static/ {
+            alias /var/www/inventario/staticfiles/;
+        }
+        
+        location /media/ {
+            alias /var/www/inventario/media/;
+        }
+        
+        location / {
+            include proxy_params;
+            proxy_pass http://unix:/var/www/inventario/inventario.sock;
+        }
+    }
+    ```
+    
+    Enable site:
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/inventario /etc/nginx/sites-enabled/
+    sudo nginx -t
+    sudo systemctl restart nginx
+    ```
+  </Step>
+
+  <Step title="Setup SSL with Certbot">
+    ```bash
+    # Install Certbot
+    sudo apt install certbot python3-certbot-nginx -y
+    
+    # Obtain SSL certificate
+    sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+    
+    # Test auto-renewal
+    sudo certbot renew --dry-run
+    ```
+  </Step>
+</Steps>
+
+## Static Files Configuration
+
+Inventario uses **WhiteNoise** for efficient static file serving in production:
+
+```python
+# From inventario/settings.py:46,97-101
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be after SecurityMiddleware
+    # ... other middleware
+]
+
+STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+```
+
+**Benefits:**
+- Serves compressed static files (gzip/brotli)
+- Adds far-future cache headers
+- No CDN required for small to medium applications
+- Works seamlessly with Django's collectstatic
+
+<Warning>
+  Always run `python manage.py collectstatic --no-input` before deploying or after modifying static files.
+</Warning>
+
+## Database Migrations
+
+Inventario uses Django's built-in migration system:
+
+```bash
+# Create new migrations after model changes
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# Show migration status
+python manage.py showmigrations
+
+# Rollback to specific migration
+python manage.py migrate app_name migration_name
+```
+
+**Production Best Practices:**
+1. Always backup database before running migrations
+2. Test migrations in staging environment first
+3. Migrations run automatically during Railway/Render deployments
+4. For manual deployments, run migrations before restarting application
+
+## Health Checks & Monitoring
+
+### Application Health
+
+```python
+# Check if application is running
+curl https://yourdomain.com/login/
+
+# Check admin panel
+curl https://yourdomain.com/admin/
+```
+
+### Database Connection
+
+```bash
+# Test database connectivity
+python manage.py dbshell
+
+# Or check in Django shell
+python manage.py shell
+>>> from django.db import connection
+>>> connection.ensure_connection()
+>>> print("Database connected successfully!")
+```
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Static files not loading (404 errors)">
+    **Symptoms:** CSS/JS files return 404 in production
+    
+    **Solution:**
+    ```bash
+    # Ensure static files are collected
+    python manage.py collectstatic --no-input --clear
+    
+    # Verify STATIC_ROOT directory exists
+    ls -la staticfiles/
+    
+    # Check WhiteNoise is in MIDDLEWARE (must be after SecurityMiddleware)
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection errors">
+    **Symptoms:** `django.db.utils.OperationalError: FATAL: password authentication failed`
+    
+    **Solution:**
+    1. Verify `DATABASE_URL` format is correct
+    2. Check database credentials
+    3. Ensure database server is running and accessible
+    4. For PostgreSQL, verify `pg_hba.conf` allows connections
+    
+    ```bash
+    # Test PostgreSQL connection
+    psql $DATABASE_URL
+    ```
+  </Accordion>
+
+  <Accordion title="CSRF verification failed">
+    **Symptoms:** 403 Forbidden on form submissions
+    
+    **Solution:**
+    ```python
+    # Ensure CSRF_TRUSTED_ORIGINS includes your domain
+    CSRF_TRUSTED_ORIGINS = [
+        'https://yourdomain.com',
+        'https://www.yourdomain.com',
+    ]
+    
+    # For Railway: https://*.railway.app
+    # For Render: https://*.onrender.com
+    ```
+  </Accordion>
+
+  <Accordion title="Google OAuth redirect mismatch">
+    **Symptoms:** Google login fails with "redirect_uri_mismatch"
+    
+    **Solution:**
+    1. Go to Google Cloud Console
+    2. Navigate to APIs & Services → Credentials
+    3. Edit your OAuth 2.0 Client
+    4. Add authorized redirect URI: `https://yourdomain.com/accounts/google/login/callback/`
+    5. Update Site domain in Django admin:
+    ```python
+    python manage.py shell
+    >>> from django.contrib.sites.models import Site
+    >>> site = Site.objects.get(id=1)
+    >>> site.domain = 'yourdomain.com'
+    >>> site.name = 'Inventario'
+    >>> site.save()
+    ```
+  </Accordion>
+
+  <Accordion title="Gunicorn worker timeout">
+    **Symptoms:** 502 Bad Gateway or worker restart logs
+    
+    **Solution:**
+    Increase timeout in Procfile or systemd service:
+    ```bash
+    # Procfile
+    web: gunicorn inventario.wsgi:application --timeout 300 --workers 2
+    
+    # For long-running reports/exports, increase to 300-600 seconds
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Security Checklist
+
+Before going to production, verify:
+
+- [ ] `DEBUG=False` in production environment
+- [ ] Strong `SECRET_KEY` (min 50 characters)
+- [ ] `ALLOWED_HOSTS` configured correctly
+- [ ] `CSRF_TRUSTED_ORIGINS` includes all domains
+- [ ] Database uses strong password
+- [ ] SSL/HTTPS enabled (use Certbot for free certificates)
+- [ ] `SESSION_COOKIE_SECURE=True`
+- [ ] `CSRF_COOKIE_SECURE=True`
+- [ ] `.env` file not committed to version control
+- [ ] Regular database backups configured
+- [ ] Admin account uses strong password
+
+## Performance Optimization
+
+### Database Connection Pooling
+
+```python
+# Already configured in settings.py:79-84
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600  # Reuse connections for 10 minutes
+    )
+}
+```
+
+### Gunicorn Workers
+
+Calculate optimal worker count:
+```bash
+# Formula: (2 x CPU cores) + 1
+# For 1 CPU: 3 workers
+# For 2 CPU: 5 workers
+
+gunicorn inventario.wsgi:application --workers 3 --threads 2
+```
+
+### Static File Compression
+
+WhiteNoise automatically compresses static files. Verify:
+```bash
+# After collectstatic, check for .gz files
+ls -la staticfiles/ | grep \.gz
+```
+
+## Backup & Recovery
+
+### Database Backup
+
+```bash
+# Backup PostgreSQL database
+pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+
+# Restore from backup
+psql $DATABASE_URL < backup_20260310.sql
+```
+
+### Automated Backups (Ubuntu)
+
+```bash
+# Create backup script
+sudo nano /usr/local/bin/backup-inventario.sh
+```
+
+```bash
+#!/bin/bash
+BACKUP_DIR="/var/backups/inventario"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $BACKUP_DIR
+pg_dump inventario_db > $BACKUP_DIR/db_$DATE.sql
+
+# Keep only last 7 days
+find $BACKUP_DIR -name "db_*.sql" -mtime +7 -delete
+```
+
+```bash
+# Make executable
+sudo chmod +x /usr/local/bin/backup-inventario.sh
+
+# Add to crontab (daily at 2 AM)
+sudo crontab -e
+0 2 * * * /usr/local/bin/backup-inventario.sh
+```
+
+## Updating the Application
+
+<Steps>
+  <Step title="Pull Latest Changes">
+    ```bash
+    cd /var/www/inventario
+    git pull origin main
+    ```
+  </Step>
+
+  <Step title="Activate Virtual Environment">
+    ```bash
+    source venv/bin/activate
+    ```
+  </Step>
+
+  <Step title="Update Dependencies">
+    ```bash
+    pip install -r requirements.txt --upgrade
+    ```
+  </Step>
+
+  <Step title="Run Migrations">
+    ```bash
+    python manage.py migrate
+    ```
+  </Step>
+
+  <Step title="Collect Static Files">
+    ```bash
+    python manage.py collectstatic --no-input
+    ```
+  </Step>
+
+  <Step title="Restart Application">
+    ```bash
+    # Systemd service
+    sudo systemctl restart inventario
+    
+    # Or if using supervisor
+    sudo supervisorctl restart inventario
+    ```
+  </Step>
+</Steps>
+
+## Support & Resources
+
+<CardGroup cols={2}>
+  <Card title="Django Documentation" icon="book" href="https://docs.djangoproject.com/en/5.2/">
+    Official Django 5.2 documentation
+  </Card>
+
+  <Card title="Railway Docs" icon="train" href="https://docs.railway.app/">
+    Railway deployment guides
+  </Card>
+
+  <Card title="Render Docs" icon="cloud" href="https://render.com/docs">
+    Render deployment documentation
+  </Card>
+
+  <Card title="Gunicorn Docs" icon="server" href="https://docs.gunicorn.org/">
+    Gunicorn configuration reference
+  </Card>
+</CardGroup>

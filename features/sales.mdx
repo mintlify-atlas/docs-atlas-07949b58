@@ -1,0 +1,373 @@
+---
+title: 'Sales Management'
+description: 'Process sales transactions with automatic tax calculation, multiple payment methods, and real-time inventory updates'
+icon: 'cash-register'
+---
+
+## Overview
+
+The Sales module is the core of Inventario, allowing you to quickly process transactions, track customer purchases, and automatically update inventory levels. The system includes automatic IVA (tax) calculation, payment tracking, and support for both quick sales and registered customers.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Quick Sales" icon="bolt">
+    Process walk-in customer sales in seconds with barcode scanning
+  </Card>
+  <Card title="Customer Tracking" icon="users">
+    Link sales to registered customers for purchase history
+  </Card>
+  <Card title="Tax Automation" icon="calculator">
+    Automatic 19% IVA calculation on all products
+  </Card>
+  <Card title="Payment Methods" icon="credit-card">
+    Support for cash and bank transfers with reference tracking
+  </Card>
+</CardGroup>
+
+## How Sales Work
+
+### Sale Information
+
+Each sale contains:
+
+- **Customer**: Name (quick sale) or registered customer
+- **Products**: One or more products with quantities
+- **Payment Method**: Cash or bank transfer
+- **Bank & Reference**: For transfer payments
+- **Sale Date**: Automatically recorded
+- **Seller**: The user who processed the sale
+- **Total Amount**: Calculated with IVA included
+
+### Automatic Calculations
+
+The system handles complex pricing automatically:
+
+1. **Base Price**: The selling price you set for each product
+2. **IVA Amount**: 19% tax calculated on base price
+3. **Final Unit Price**: Base price + IVA
+4. **Line Subtotal**: Final unit price × quantity
+5. **Sale Total**: Sum of all line subtotals
+
+<Info>
+  All prices displayed to customers include IVA. The system stores both base and final prices for accurate reporting.
+</Info>
+
+## Creating a New Sale
+
+<Steps>
+  <Step title="Click New Sale">
+    From the sales list, click **New Sale** or use the quick action button
+  </Step>
+  <Step title="Enter Customer Information">
+    Choose one of these options:
+    - Type a customer name for a quick sale
+    - Search and select a registered customer
+    - Create a new customer on the fly
+  </Step>
+  <Step title="Add Products">
+    Add products to the sale by:
+    - Scanning barcodes with a barcode reader
+    - Searching by product name
+    - Browsing the product list
+    
+    For each product:
+    - Set the quantity
+    - Verify the price (editable if needed)
+  </Step>
+  <Step title="Select Payment Method">
+    Choose the payment method:
+    - **Cash**: No additional information needed
+    - **Transfer**: Enter bank name and reference number
+  </Step>
+  <Step title="Complete Sale">
+    Click **Complete Sale** to:
+    - Process the transaction
+    - Update inventory levels
+    - Generate the sale record
+    - Show low stock alerts if applicable
+  </Step>
+</Steps>
+
+### Today's Sales Total
+
+The sales form displays your total sales for the current day, helping you track daily performance in real-time.
+
+## Managing Existing Sales
+
+### Viewing Sales
+
+The sales list shows:
+- All sales and extra income entries
+- Customer name or "Final Consumer"
+- Sale date and time
+- Total amount
+- Payment method
+- Seller name
+- Quick action buttons
+
+### Sales Details
+
+Click on any sale to view:
+- Complete customer information
+- Product breakdown with quantities and prices
+- Base price, IVA amount, and final price per product
+- Payment details (bank and reference if transfer)
+- Subtotal, total IVA, and grand total
+
+### Editing Sales (Admin Only)
+
+<Warning>
+  Editing a sale restores the original stock, then deducts the new quantities. Make sure you understand this before proceeding.
+</Warning>
+
+<Steps>
+  <Step title="Select Sale">
+    Find the sale in the list and click **Edit**
+  </Step>
+  <Step title="Modify Details">
+    You can change:
+    - Customer information
+    - Products and quantities
+    - Prices
+    - Payment method and details
+  </Step>
+  <Step title="Save Changes">
+    Click **Save** to update the sale
+  </Step>
+</Steps>
+
+### Deleting Sales (Admin Only)
+
+To remove a sale:
+
+1. Click **Delete** next to the sale
+2. Confirm the deletion
+3. Stock is automatically restored for all products in the sale
+
+<Note>
+  Deleted sales cannot be recovered. Consider whether editing the sale would be more appropriate.
+</Note>
+
+## Payment Methods
+
+### Cash Payments
+
+The simplest payment method:
+- Select "Cash" as payment method
+- Complete the sale
+- No additional tracking required
+
+### Bank Transfers
+
+For electronic payments:
+1. Select "Transfer" as payment method
+2. Enter the bank name (e.g., "Banco de Chile")
+3. Enter the transfer reference number
+4. This information appears in reports and sale details
+
+<Tip>
+  Always verify the transfer reference before completing the sale. This helps with reconciliation later.
+</Tip>
+
+## Customer Management in Sales
+
+### Quick Sales (Anonymous)
+
+For walk-in customers:
+- Simply type any name in the customer field
+- The sale processes normally
+- No customer history is tracked
+
+### Registered Customers
+
+For repeat customers:
+1. Start typing the customer name
+2. The system suggests matching customers
+3. Select from the list
+4. The sale is linked to their customer record
+
+### Creating Customers During Sales
+
+You can register a new customer while creating a sale:
+1. Click "Create New Customer" in the sales form
+2. Enter customer details (name, phone, document)
+3. The customer is saved and automatically linked to the sale
+
+## Extra Income Tracking
+
+Besides product sales, you can register other income:
+
+### Types of Extra Income
+- **Delivery**: Delivery fees charged to customers
+- **Service**: Service fees
+- **Labor**: Manual labor charges
+- **Other**: Any other income not from product sales
+
+### Recording Extra Income
+
+<Steps>
+  <Step title="Click Register Extra Income">
+    From the sales list, use the extra income button
+  </Step>
+  <Step title="Enter Details">
+    - Select income type
+    - Enter description (optional)
+    - Enter amount
+  </Step>
+  <Step title="Save">
+    The income is recorded and appears in your sales list and reports
+  </Step>
+</Steps>
+
+## Stock Alerts
+
+### Automatic Warnings
+
+After completing a sale, you'll see alerts for:
+
+**Zero Stock Products**: Products that are now out of stock
+
+**Low Stock Products**: Products below the threshold (5 units)
+
+<Info>
+  These alerts help you identify products that need reordering immediately.
+</Info>
+
+## Invoice Generation
+
+Inventario can generate PDF invoices for sales:
+
+### Invoice Contents
+- Your business information (configured in settings)
+- Customer name
+- Sale date and ID
+- Product breakdown with prices
+- Base subtotal
+- IVA amount (19%)
+- Total amount
+- Payment method
+
+### Generating an Invoice
+
+1. View the sale details
+2. Click **Generate PDF** or **Print Invoice**
+3. The invoice opens in a new window
+4. Print or save as needed
+
+## Search and Filters
+
+### Searching Sales
+
+Quickly find sales by:
+- Customer name
+- Date range
+- Sale ID
+
+The search function provides real-time results as you type.
+
+### Pagination
+
+Sales are displayed 7 per page for easy navigation. Use the page controls to browse through your sales history.
+
+## Sales Reports
+
+View detailed sales reports including:
+- Total sales by period
+- Sales by seller
+- Payment method breakdown
+- Best-selling products
+
+See the [Reports](/features/reports) section for more details.
+
+## Multi-User Support
+
+### Admin View
+
+Admins see:
+- Their own sales
+- All sales from their sellers
+- Complete editing and deletion rights
+
+### Seller View
+
+Sellers see:
+- Only their own sales
+- View-only access (cannot edit or delete)
+- Can create new sales
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Register Repeat Customers">
+    Take the time to register customers who visit frequently. This enables:
+    - Purchase history tracking
+    - Better customer service
+    - Targeted marketing (SMS campaigns)
+    - Sales analytics by customer
+  </Accordion>
+  
+  <Accordion title="Use Barcodes for Speed">
+    Barcode scanning dramatically speeds up the sales process:
+    - Keep a barcode scanner connected
+    - Train staff on proper scanning technique
+    - Add barcodes to all products when possible
+  </Accordion>
+  
+  <Accordion title="Track Transfer References">
+    Always record bank transfer references:
+    - Makes reconciliation easier
+    - Helps resolve payment disputes
+    - Required for financial auditing
+  </Accordion>
+  
+  <Accordion title="Review Sales Daily">
+    Check your sales at the end of each day:
+    - Verify cash and transfers match records
+    - Identify any errors that need correction
+    - Track daily performance trends
+  </Accordion>
+  
+  <Accordion title="Handle Edits Carefully">
+    Only edit sales when absolutely necessary:
+    - Editing affects inventory levels
+    - Consider processing a return instead
+    - Document the reason for major changes
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Product Shows Insufficient Stock
+
+If you get a "not enough stock" error:
+1. Verify the current stock level
+2. Check if another user is selling the same product
+3. Review recent sales for errors
+4. Adjust product stock if needed
+
+### Customer Not Found in Search
+
+If a customer isn't appearing:
+1. Check that the customer is marked as "active"
+2. Try searching by phone or document number
+3. Verify you're searching the correct customer database (admin owns all customers)
+
+### Total Seems Incorrect
+
+If the sale total doesn't match expectations:
+- Remember that prices include 19% IVA
+- Check the base price of each product
+- Verify quantities are correct
+- Review the sale details breakdown
+
+<Tip>
+  The system automatically recalculates totals when you change quantities or prices. The calculation is always: (Base Price × 1.19) × Quantity
+</Tip>
+
+## Related Features
+
+- [Products](/features/products) - Manage your product catalog and pricing
+- [Clients](/features/clients) - Register and manage customer information
+- [Returns](/features/returns) - Process product returns and refunds
+- [Reports](/features/reports) - Analyze sales performance and trends

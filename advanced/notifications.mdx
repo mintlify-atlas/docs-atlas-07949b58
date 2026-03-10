@@ -1,0 +1,372 @@
+---
+title: 'Notification System'
+description: 'Configure email and SMS notifications using Resend and Twilio'
+icon: 'bell'
+---
+
+## Overview
+
+Inventario includes a comprehensive notification system supporting both **email** (via Resend) and **SMS** (via Twilio) notifications. These notifications are triggered automatically for events like contact form submissions, password resets, and customer campaigns.
+
+## Email Notifications (Resend)
+
+Inventario uses [Resend](https://resend.com) for reliable email delivery with a simple API.
+
+### Configuration
+
+Email settings in `settings.py`:
+
+```python inventario/settings.py
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+```
+
+### Environment Variables
+
+Add these to your `.env` file:
+
+```bash .env
+RESEND_API_KEY=re_your_api_key_here
+DEFAULT_FROM_EMAIL=sistema@yourdomain.com
+```
+
+<Warning>
+  You must verify your domain in Resend before sending emails. Unverified domains are limited to test mode.
+</Warning>
+
+### Setting Up Resend
+
+<Steps>
+  <Step title="Create Resend Account">
+    Sign up at [resend.com](https://resend.com) and create a new account.
+  </Step>
+  
+  <Step title="Verify Your Domain">
+    Add your domain and configure DNS records:
+    - SPF record
+    - DKIM records
+    - DMARC record (optional but recommended)
+  </Step>
+  
+  <Step title="Generate API Key">
+    Go to **API Keys** in the Resend dashboard and create a new key.
+    
+    Copy the key and add it to your `.env` file.
+  </Step>
+  
+  <Step title="Test Email Sending">
+    Use the email service to send a test email:
+    ```bash
+    python manage.py shell
+    >>> from applications.cuentas.email_service import enviar_email
+    >>> enviar_email('test@example.com', 'Test', '<h1>Hello</h1>')
+    ```
+  </Step>
+</Steps>
+
+### Email Service Implementation
+
+The email service is implemented in `applications/cuentas/email_service.py`:
+
+```python applications/cuentas/email_service.py
+import resend
+from django.conf import settings
+
+def enviar_email(destinatario, asunto, html):
+    resend.api_key = settings.RESEND_API_KEY
+    try:
+        resend.Emails.send({
+            "from": "sistema@hjmanager.site",
+            "to": [destinatario],
+            "subject": asunto,
+            "html": html,
+        })
+        return True
+    except Exception as e:
+        print(f"Error enviando email: {e}")
+        return False
+```
+
+### Email Notification Triggers
+
+Emails are automatically sent for:
+
+#### 1. Contact Form Submissions
+
+When users submit the contact form on the home page:
+
+```python applications/cuentas/views.py
+resend.Emails.send({
+    "from": settings.DEFAULT_FROM_EMAIL,
+    "to": ["davidnoguera2202@gmail.com"],
+    "subject": f"Nuevo mensaje de contacto de {nombre}",
+    "text": mensaje,
+    "reply_to": email,
+})
+```
+
+#### 2. Password Reset Requests
+
+When users request a password reset, they receive a verification code via email.
+
+#### 3. Custom Notifications
+
+Developers can trigger custom emails using the `enviar_email()` function:
+
+```python
+from applications.cuentas.email_service import enviar_email
+
+# Send HTML email
+html_content = """
+<h1>¡Bienvenido!</h1>
+<p>Tu cuenta ha sido activada.</p>
+"""
+
+enviar_email(
+    destinatario='user@example.com',
+    asunto='Cuenta Activada',
+    html=html_content
+)
+```
+
+## SMS Notifications (Twilio)
+
+Inventario uses [Twilio](https://www.twilio.com) for SMS messaging, enabling customer campaigns and alerts.
+
+### Configuration
+
+Twilio settings in `settings.py`:
+
+```python inventario/settings.py
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER', '')
+```
+
+### Environment Variables
+
+Add these to your `.env` file:
+
+```bash .env
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+1234567890
+```
+
+<Warning>
+  Twilio phone numbers must be in E.164 format (e.g., +57 for Colombia). SMS messaging rates apply.
+</Warning>
+
+### Setting Up Twilio
+
+<Steps>
+  <Step title="Create Twilio Account">
+    Sign up at [twilio.com](https://www.twilio.com) and verify your email.
+  </Step>
+  
+  <Step title="Get a Phone Number">
+    Purchase a phone number with SMS capabilities for your country.
+    
+    For Colombia: Look for numbers starting with `+57`.
+  </Step>
+  
+  <Step title="Copy Credentials">
+    From the Twilio Console dashboard:
+    - Copy **Account SID**
+    - Copy **Auth Token**
+    - Copy your **Twilio Phone Number**
+    
+    Add these to your `.env` file.
+  </Step>
+  
+  <Step title="Test SMS Sending">
+    Use the SMS service to send a test message:
+    ```bash
+    python manage.py shell
+    >>> from applications.clientes.sms_providers import enviar_sms_twilio
+    >>> enviar_sms_twilio('+573001234567', 'Test message')
+    (True, 'SMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+    ```
+  </Step>
+</Steps>
+
+### SMS Service Implementation
+
+The SMS provider is implemented in `applications/clientes/sms_providers.py`:
+
+```python applications/clientes/sms_providers.py
+from twilio.rest import Client
+from twilio.base.exceptions import TwilioRestException
+from django.conf import settings
+
+def enviar_sms_twilio(to, message):
+    """
+    Envía SMS usando Twilio
+    Returns: (success: bool, detail: str)
+    """
+    account_sid = settings.TWILIO_ACCOUNT_SID
+    auth_token = settings.TWILIO_AUTH_TOKEN
+    phone_number = settings.TWILIO_PHONE_NUMBER
+    
+    # Validar configuración
+    if not account_sid or not auth_token or not phone_number:
+        return False, "Twilio no está configurado"
+    
+    try:
+        client = Client(account_sid, auth_token)
+        msg = client.messages.create(
+            body=message,
+            from_=phone_number,
+            to=to
+        )
+        return True, msg.sid
+    except TwilioRestException as e:
+        return False, f"Error Twilio: {str(e)}"
+```
+
+### Phone Number Formatting
+
+Inventario automatically formats Colombian phone numbers to E.164 format:
+
+```python applications/clientes/utils.py
+def formatear_telefono_colombia(telefono):
+    """Convierte teléfono de 10 dígitos a formato internacional +57"""
+    # 3001234567 → +573001234567
+    # +573001234567 → +573001234567 (no change)
+    if len(telefono) == 10 and telefono.isdigit():
+        return f'+57{telefono}'
+    return telefono
+```
+
+### SMS Campaigns
+
+Inventario includes a customer campaign system (`applications/clientes/models.py`):
+
+- **CampanaSMS**: Defines SMS campaigns with templates
+- **PlantillaSMS**: Reusable message templates with variables like `{nombre}`
+- **SMSLog**: Tracks all sent messages with status and Twilio SID
+
+#### Creating a Campaign
+
+1. Create a template in Django admin:
+   ```
+   Hola {nombre}, tenemos una oferta especial para ti...
+   ```
+
+2. Create a campaign and select customers
+
+3. Send SMS campaign:
+   ```python
+   from applications.clientes.utils import enviar_sms_masivo
+   
+   resultados = enviar_sms_masivo(
+       clientes=clientes_queryset,
+       mensaje="Hola {nombre}, ...",
+       campana=campana_obj,
+       delay_ms=1000  # 1 second delay between messages
+   )
+   ```
+
+### SMS Logging
+
+All SMS messages are logged in the `SMSLog` model:
+
+```python applications/clientes/models.py
+class SMSLog(models.Model):
+    campana = models.ForeignKey(CampanaSMS, on_delete=models.CASCADE)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
+    mensaje = models.TextField()
+    estado = models.CharField(max_length=20)  # 'enviado' or 'fallido'
+    twilio_sid = models.CharField(max_length=100)  # Twilio message SID
+    error_mensaje = models.TextField(blank=True)
+    creado = models.DateTimeField(auto_now_add=True)
+```
+
+## Notification Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Rate Limiting" icon="clock">
+    Implement delays between bulk SMS to avoid rate limits:
+    ```python
+    delay_ms=1000  # 1 second between messages
+    ```
+  </Card>
+  
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Always check return values and log errors:
+    ```python
+    success, detail = enviar_sms_twilio(phone, msg)
+    if not success:
+        logger.error(f"SMS failed: {detail}")
+    ```
+  </Card>
+  
+  <Card title="Testing" icon="flask">
+    Use Twilio test credentials during development to avoid charges.
+  </Card>
+  
+  <Card title="Compliance" icon="shield-check">
+    Ensure customers opt-in to SMS campaigns. Include unsubscribe options.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Resend emails not sending">
+    1. Verify your domain is confirmed in Resend dashboard
+    2. Check DNS records are properly configured
+    3. Verify `RESEND_API_KEY` in `.env` is correct
+    4. Check application logs for error messages
+    
+    Test manually:
+    ```bash
+    python manage.py shell
+    >>> import resend
+    >>> from django.conf import settings
+    >>> resend.api_key = settings.RESEND_API_KEY
+    >>> resend.Emails.send({
+        "from": "test@yourdomain.com",
+        "to": ["your@email.com"],
+        "subject": "Test",
+        "html": "<p>Test</p>"
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Twilio SMS failing">
+    Common issues:
+    
+    1. **Invalid phone number format**: Must be E.164 format (e.g., `+573001234567`)
+    2. **Unverified number** (trial accounts): Add recipient to verified numbers
+    3. **Insufficient balance**: Check Twilio account balance
+    4. **Wrong phone number**: Verify `TWILIO_PHONE_NUMBER` is your Twilio number
+    
+    Check error messages in `SMSLog.error_mensaje` field.
+  </Accordion>
+  
+  <Accordion title="Missing environment variables">
+    If notifications aren't working, verify all required variables are set:
+    
+    ```bash
+    python manage.py shell
+    >>> from django.conf import settings
+    >>> print(settings.RESEND_API_KEY)
+    >>> print(settings.TWILIO_ACCOUNT_SID)
+    >>> print(settings.TWILIO_PHONE_NUMBER)
+    ```
+    
+    Empty strings indicate missing environment variables.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Features" icon="brain" href="/advanced/ai-features">
+    Enable OpenAI-powered business insights
+  </Card>
+  <Card title="Integrations" icon="plug" href="/advanced/integrations">
+    Configure Google OAuth and other services
+  </Card>
+</CardGroup>

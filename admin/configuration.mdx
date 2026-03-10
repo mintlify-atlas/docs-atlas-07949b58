@@ -1,0 +1,293 @@
+---
+title: Configuration
+description: Django settings and application configuration for Inventario
+---
+
+Inventario's configuration is managed through Django settings in `inventario/settings.py`. Most production settings are controlled via environment variables.
+
+## Core Settings
+
+### DEBUG Mode
+
+Controls Django's debug mode and affects security settings.
+
+```python
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+```
+
+**Environment variable:** `DEBUG`
+
+- **Development:** Set to `True` for detailed error pages
+- **Production:** Must be `False` (default)
+
+<Warning>
+Never run production with `DEBUG=True`. This exposes sensitive configuration and security vulnerabilities.
+</Warning>
+
+DEBUG mode also controls:
+- `SESSION_COOKIE_SECURE` (disabled when DEBUG=True)
+- `CSRF_COOKIE_SECURE` (disabled when DEBUG=True)
+
+### SECRET_KEY
+
+Cryptographic signing key for sessions, CSRF tokens, and password resets.
+
+```python
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-641xw29uuar#$5&nj!kxjozc+#2#=f6s+4lmziq&_8hnh$#@6$')
+```
+
+**Environment variable:** `SECRET_KEY`
+
+<Warning>
+The default key is insecure and only for development. Generate a new key for production:
+
+```bash
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+```
+</Warning>
+
+### ALLOWED_HOSTS
+
+List of host/domain names that Django will serve.
+
+```python
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+```
+
+**Environment variable:** `ALLOWED_HOSTS`
+
+**Format:** Comma-separated list of domains
+
+```bash
+# Single domain
+ALLOWED_HOSTS=myapp.railway.app
+
+# Multiple domains
+ALLOWED_HOSTS=myapp.railway.app,www.example.com,example.com
+
+# Wildcard subdomains
+ALLOWED_HOSTS=.example.com
+```
+
+<Warning>
+The default `*` allows all hosts and is insecure. Always specify exact domains in production.
+</Warning>
+
+### CSRF_TRUSTED_ORIGINS
+
+Trusted origins for CSRF protection when using HTTPS.
+
+```python
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://127.0.0.1:8000'
+).split(',')
+```
+
+**Environment variable:** `CSRF_TRUSTED_ORIGINS`
+
+**Format:** Comma-separated URLs with protocol
+
+```bash
+# Single origin
+CSRF_TRUSTED_ORIGINS=https://myapp.railway.app
+
+# Multiple origins
+CSRF_TRUSTED_ORIGINS=https://myapp.railway.app,https://www.example.com
+```
+
+<Note>
+Must include the full URL with `https://` protocol. This is required for POST requests to work correctly.
+</Note>
+
+## Application Settings
+
+### Custom User Model
+
+Inventario uses a custom user model:
+
+```python
+AUTH_USER_MODEL = 'cuentas.Usuario'
+```
+
+The custom user model is defined in `applications.cuentas` and extends Django's authentication.
+
+### Authentication Configuration
+
+```python
+AUTHENTICATION_BACKENDS = (
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/login/'
+```
+
+Supports both:
+- Email/password authentication (ModelBackend)
+- OAuth authentication via django-allauth (Google)
+
+### Django Allauth Configuration
+
+Email and account settings:
+
+```python
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATED_LOGIN_REDIRECTS = True
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+```
+
+Social account settings:
+
+```python
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = False
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = False
+SOCIALACCOUNT_QUERY_EMAIL = True
+```
+
+### Site Configuration
+
+Django sites framework configuration:
+
+```python
+SITE_ID = 1
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+```
+
+<Note>
+The Site domain must match your deployment URL for OAuth to work correctly. Update via Django admin or in `build.sh`.
+</Note>
+
+## Localization
+
+```python
+LANGUAGE_CODE = 'es-es'
+TIME_ZONE = 'America/Bogota'
+USE_I18N = True
+USE_TZ = True
+```
+
+- **Language:** Spanish (Spain)
+- **Timezone:** Colombia (America/Bogota)
+- **Internationalization:** Enabled
+- **Timezone support:** Enabled
+
+## Middleware Configuration
+
+Middleware stack in order:
+
+```python
+MIDDLEWARE = [
+    'django.middleware.locale.LocaleMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'applications.cuentas.middleware.ForzarCambioPasswordMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+```
+
+Key middleware:
+- **SecurityMiddleware:** Adds security headers
+- **WhiteNoiseMiddleware:** Serves static files (must be after SecurityMiddleware)
+- **ForzarCambioPasswordMiddleware:** Custom middleware to enforce password changes
+- **AccountMiddleware:** Required for django-allauth
+
+## Static and Media Files
+
+### Static Files
+
+```python
+STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+```
+
+- Development static files: `static/` directory
+- Collected static files: `staticfiles/` directory
+- WhiteNoise handles compression and caching
+
+### Media Files
+
+```python
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+```
+
+User-uploaded files are stored in the `media/` directory.
+
+<Warning>
+For production deployments, consider using object storage (S3, Cloudinary, etc.) for media files instead of local filesystem storage.
+</Warning>
+
+## Installed Applications
+
+Core Django apps:
+- `django.contrib.admin`
+- `django.contrib.auth`
+- `django.contrib.contenttypes`
+- `django.contrib.sessions`
+- `django.contrib.messages`
+- `django.contrib.staticfiles`
+- `django.contrib.sites`
+
+Third-party apps:
+- `allauth`, `allauth.account`, `allauth.socialaccount`
+- `allauth.socialaccount.providers.google`
+- `widget_tweaks`
+
+Inventario apps:
+- `applications.usuarios` - User management
+- `applications.cuentas` - Account management
+- `applications.proveedores` - Supplier management
+- `applications.productos` - Product management
+- `applications.clientes` - Customer management
+- `applications.ventas` - Sales management
+- `applications.reportes` - Reporting
+- `applications.compras` - Purchase management
+- `applications.configuracion` - Configuration
+- `applications.devoluciones` - Returns management
+
+## Templates
+
+```python
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'applications', 'templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+```
+
+Template directory: `applications/templates/`
+
+## Adapters
+
+Custom adapter for social account handling:
+
+```python
+SOCIALACCOUNT_ADAPTER = 'applications.cuentas.adapters.CustomSocialAccountAdapter'
+```
+
+This adapter customizes the OAuth flow and user creation process.

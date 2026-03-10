@@ -1,0 +1,530 @@
+---
+title: Database
+description: Database configuration, migrations, and management for Inventario
+---
+
+Inventario uses Django's ORM with support for PostgreSQL in production and SQLite for development. Database configuration is managed through environment variables.
+
+## Database Configuration
+
+### PostgreSQL with dj-database-url
+
+The database is configured using `dj-database-url` for easy environment-based setup:
+
+```python
+import dj_database_url
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600
+    )
+}
+```
+
+**Configuration:**
+- **Environment variable:** `DATABASE_URL`
+- **Connection pooling:** `conn_max_age=600` (10 minutes)
+- **Fallback:** SQLite at `db.sqlite3` if `DATABASE_URL` not set
+
+### Database URL Format
+
+PostgreSQL connection string format:
+
+```bash
+DATABASE_URL=postgresql://username:password@host:port/database_name
+```
+
+**Example:**
+
+```bash
+DATABASE_URL=postgresql://inventario_user:mypassword@db.railway.app:5432/inventario_prod
+```
+
+**Components:**
+- `postgresql://` - Database engine
+- `username:password` - Credentials
+- `host:port` - Database server location
+- `database_name` - Database name
+
+## SQLite Fallback (Development)
+
+When `DATABASE_URL` is not set, Inventario uses SQLite:
+
+```python
+default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'
+```
+
+**Location:** `db.sqlite3` in project root
+
+<Warning>
+SQLite is suitable for development only. Always use PostgreSQL for production:
+- SQLite lacks concurrent write support
+- No user management or access control
+- Limited performance under load
+- File-based storage not suitable for containerized deployments
+</Warning>
+
+## Database Setup
+
+### Development Setup
+
+For local development with SQLite:
+
+```bash
+# No DATABASE_URL needed
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+SQLite database is created automatically on first migration.
+
+### Production Setup (PostgreSQL)
+
+1. **Provision PostgreSQL database**
+
+   On Railway:
+   ```bash
+   # Railway provides DATABASE_URL automatically when you add PostgreSQL
+   ```
+
+   On Render:
+   ```bash
+   # Add PostgreSQL service in Render dashboard
+   # Copy DATABASE_URL from database info
+   ```
+
+   Manual setup:
+   ```sql
+   CREATE DATABASE inventario;
+   CREATE USER inventario_user WITH PASSWORD 'secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE inventario TO inventario_user;
+   ```
+
+2. **Set environment variable**
+
+   ```bash
+   DATABASE_URL=postgresql://inventario_user:secure_password@localhost:5432/inventario
+   ```
+
+3. **Run migrations**
+
+   ```bash
+   python manage.py migrate
+   ```
+
+## Migrations
+
+Django migrations track database schema changes.
+
+### Running Migrations
+
+Apply pending migrations:
+
+```bash
+python manage.py migrate
+```
+
+The `build.sh` script automatically runs migrations on deployment:
+
+```bash
+echo "🗄️ Applying migrations..."
+python manage.py migrate
+```
+
+### Creating Migrations
+
+After changing models, create migrations:
+
+```bash
+python manage.py makemigrations
+```
+
+This generates migration files in each app's `migrations/` directory.
+
+<Note>
+Always commit migration files to version control. They ensure database schema stays in sync across environments.
+</Note>
+
+### Checking Migration Status
+
+View applied and pending migrations:
+
+```bash
+python manage.py showmigrations
+```
+
+View SQL for a migration:
+
+```bash
+python manage.py sqlmigrate <app_name> <migration_number>
+```
+
+### Rolling Back Migrations
+
+Rollback to a specific migration:
+
+```bash
+python manage.py migrate <app_name> <migration_name>
+```
+
+Rollback all migrations for an app:
+
+```bash
+python manage.py migrate <app_name> zero
+```
+
+<Warning>
+Rolling back migrations in production can cause data loss. Always backup the database first.
+</Warning>
+
+## Database Applications
+
+Inventario includes these database-backed applications:
+
+- **applications.usuarios** - User management
+- **applications.cuentas** - Account management with custom user model
+- **applications.proveedores** - Supplier records
+- **applications.productos** - Product inventory
+- **applications.clientes** - Customer records
+- **applications.ventas** - Sales transactions
+- **applications.reportes** - Report data
+- **applications.compras** - Purchase orders
+- **applications.configuracion** - System configuration
+- **applications.devoluciones** - Return/refund records
+
+Each application has its own migration directory and models.
+
+## Custom User Model
+
+Inventario uses a custom user model:
+
+```python
+AUTH_USER_MODEL = 'cuentas.Usuario'
+```
+
+This model is defined in `applications.cuentas.models` and extends Django's authentication.
+
+<Note>
+Changing `AUTH_USER_MODEL` after initial migrations is extremely difficult. This must be set before first migration.
+</Note>
+
+## Connection Pooling
+
+```python
+conn_max_age=600
+```
+
+Keeps database connections open for 10 minutes:
+- Reduces connection overhead
+- Improves response times
+- Prevents connection exhaustion
+
+**Adjust based on:**
+- Database connection limits
+- Application server count
+- Expected concurrent users
+
+**Formula:** `max_connections / (workers * servers) ≈ 600 seconds`
+
+## Database Backups
+
+### PostgreSQL Backups
+
+Create a backup:
+
+```bash
+pg_dump -h host -U username -d database_name -F c -f backup.dump
+```
+
+With `DATABASE_URL`:
+
+```bash
+pg_dump $DATABASE_URL -F c -f backup_$(date +%Y%m%d_%H%M%S).dump
+```
+
+### Restore from Backup
+
+```bash
+pg_restore -h host -U username -d database_name -c backup.dump
+```
+
+<Warning>
+Restore with `-c` (clean) drops existing objects. Test on a separate database first.
+</Warning>
+
+### Automated Backups
+
+On Railway:
+- Configure automatic backups in Railway dashboard
+- Backups are taken daily by default
+
+On Render:
+- Enable automatic backups in database settings
+- Choose retention period
+
+Manual automation:
+```bash
+#!/bin/bash
+# backup.sh - Daily PostgreSQL backup
+BACKUP_DIR="/backups"
+DATABASE_URL="$DATABASE_URL"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+pg_dump $DATABASE_URL -F c -f "$BACKUP_DIR/backup_$TIMESTAMP.dump"
+
+# Keep only last 7 days
+find $BACKUP_DIR -name "backup_*.dump" -mtime +7 -delete
+```
+
+Run daily with cron:
+```bash
+0 2 * * * /path/to/backup.sh
+```
+
+## Database Management
+
+### Django Database Shell
+
+Open PostgreSQL shell through Django:
+
+```bash
+python manage.py dbshell
+```
+
+This uses the configured `DATABASE_URL` automatically.
+
+### Inspecting the Database
+
+View all tables:
+
+```sql
+\dt
+```
+
+Describe a table:
+
+```sql
+\d+ tablename
+```
+
+Query data:
+
+```sql
+SELECT * FROM cuentas_usuario LIMIT 10;
+```
+
+### Django Shell
+
+Interact with models in Python:
+
+```bash
+python manage.py shell
+```
+
+```python
+from applications.cuentas.models import Usuario
+from applications.productos.models import Producto
+
+# Query users
+users = Usuario.objects.all()
+print(f"Total users: {users.count()}")
+
+# Query products
+products = Producto.objects.filter(activo=True)
+print(f"Active products: {products.count()}")
+```
+
+## Database Optimization
+
+### Indexing
+
+Django automatically creates indexes for:
+- Primary keys
+- Foreign keys
+- Fields with `unique=True`
+- Fields with `db_index=True`
+
+Add custom indexes in models:
+
+```python
+class Meta:
+    indexes = [
+        models.Index(fields=['campo1', 'campo2']),
+    ]
+```
+
+### Query Optimization
+
+Use `select_related()` for foreign keys:
+
+```python
+# Instead of:
+products = Producto.objects.all()
+for product in products:
+    print(product.proveedor.nombre)  # N+1 queries
+
+# Use:
+products = Producto.objects.select_related('proveedor')
+for product in products:
+    print(product.proveedor.nombre)  # 1 query
+```
+
+Use `prefetch_related()` for many-to-many:
+
+```python
+ventas = Venta.objects.prefetch_related('productos')
+```
+
+### Database Monitoring
+
+Monitor these metrics:
+- Connection count
+- Query execution time
+- Slow queries
+- Database size
+- Index usage
+
+Enable query logging in development:
+
+```python
+# settings.py (development only)
+if DEBUG:
+    LOGGING = {
+        'version': 1,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'django.db.backends': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+            },
+        },
+    }
+```
+
+## Troubleshooting
+
+### "No such table" Error
+
+Migrations haven't been applied:
+
+```bash
+python manage.py migrate
+```
+
+### Connection Refused
+
+Check `DATABASE_URL` is correct:
+
+```bash
+echo $DATABASE_URL
+```
+
+Test PostgreSQL connection:
+
+```bash
+psql $DATABASE_URL
+```
+
+### Authentication Failed
+
+Verify credentials in `DATABASE_URL`:
+- Username and password are correct
+- User has access to the database
+- Database exists
+
+### Too Many Connections
+
+Reduce `conn_max_age` or increase PostgreSQL `max_connections`:
+
+```python
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=300  # Reduced from 600
+    )
+}
+```
+
+### Migration Conflicts
+
+If multiple developers create migrations simultaneously:
+
+```bash
+python manage.py makemigrations --merge
+```
+
+### Database Locked (SQLite)
+
+SQLite locks the entire database for writes. Switch to PostgreSQL for production:
+
+```bash
+DATABASE_URL=postgresql://...
+python manage.py migrate
+```
+
+## Data Import/Export
+
+### Export Data (JSON)
+
+```bash
+python manage.py dumpdata > data.json
+```
+
+Export specific app:
+
+```bash
+python manage.py dumpdata productos > productos.json
+```
+
+### Import Data
+
+```bash
+python manage.py loaddata data.json
+```
+
+<Warning>
+`loaddata` can create duplicate data. Use with caution in production.
+</Warning>
+
+## Migration from SQLite to PostgreSQL
+
+To migrate from development SQLite to production PostgreSQL:
+
+1. **Export data from SQLite**
+
+   ```bash
+   python manage.py dumpdata --natural-foreign --natural-primary \
+     -e contenttypes -e auth.Permission > data.json
+   ```
+
+2. **Configure PostgreSQL**
+
+   ```bash
+   export DATABASE_URL=postgresql://user:pass@host:5432/dbname
+   ```
+
+3. **Run migrations**
+
+   ```bash
+   python manage.py migrate
+   ```
+
+4. **Import data**
+
+   ```bash
+   python manage.py loaddata data.json
+   ```
+
+5. **Verify data**
+
+   ```bash
+   python manage.py shell
+   >>> from applications.cuentas.models import Usuario
+   >>> Usuario.objects.count()
+   ```

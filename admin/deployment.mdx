@@ -1,0 +1,187 @@
+---
+title: Deployment
+description: Deploy Inventario to production on Railway or Render
+---
+
+Inventario is configured for deployment on modern PaaS platforms like Railway and Render. The application uses Gunicorn as the WSGI server and WhiteNoise for efficient static file serving.
+
+## Prerequisites
+
+- Python 3.11.9 (specified in `runtime.txt`)
+- PostgreSQL database (recommended for production)
+- Git repository with your code
+
+## Platform Configuration
+
+### Railway Deployment
+
+Railway automatically detects Django applications and configures them appropriately.
+
+1. **Connect your repository**
+   - Link your GitHub repository to Railway
+   - Railway will detect the `Procfile` and `requirements.txt`
+
+2. **Configure environment variables**
+   - Set all required environment variables (see [Environment Variables](/admin/environment-variables))
+   - At minimum: `SECRET_KEY`, `DATABASE_URL`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`
+
+3. **Deploy**
+   - Railway will automatically run `pip install -r requirements.txt`
+   - The application starts with the command from `Procfile`
+
+### Render Deployment
+
+Render uses the `build.sh` script for automated builds.
+
+1. **Create a new Web Service**
+   - Connect your GitHub repository
+   - Set build command: `./build.sh`
+   - Set start command: `gunicorn inventario.wsgi:application --log-file - --workers 2 --timeout 120`
+
+2. **Configure environment variables**
+   - Add all required variables in Render dashboard
+   - Render provides `DATABASE_URL` automatically if you add a PostgreSQL service
+
+3. **Deploy**
+   - Render executes `build.sh` which:
+     - Installs dependencies from `requirements.txt`
+     - Collects static files with `collectstatic`
+     - Applies database migrations
+     - Configures the Site domain
+
+## Gunicorn Configuration
+
+The application runs with Gunicorn configured in `Procfile`:
+
+```bash
+web: gunicorn inventario.wsgi:application --log-file - --workers 2 --timeout 120
+```
+
+**Configuration breakdown:**
+- `--log-file -`: Stream logs to stdout for platform log aggregation
+- `--workers 2`: Run 2 worker processes (adjust based on available RAM)
+- `--timeout 120`: 120-second timeout for long-running requests
+
+<Note>
+For high-traffic deployments, calculate workers using: `(2 x CPU_cores) + 1`
+</Note>
+
+## Static Files with WhiteNoise
+
+WhiteNoise serves static files efficiently without requiring a separate CDN for small to medium deployments.
+
+**Configuration in `settings.py`:**
+
+```python
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Must be after SecurityMiddleware
+    # ... other middleware
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+```
+
+WhiteNoise automatically:
+- Compresses files with Brotli and gzip
+- Adds far-future cache headers
+- Serves files with minimal overhead
+
+## Build Script (build.sh)
+
+The build script automates deployment preparation:
+
+```bash
+#!/usr/bin/env bash
+set -o errexit  # Exit on any error
+
+echo "📦 Installing dependencies..."
+pip install -r requirements.txt
+
+echo "📁 Collecting static files..."
+python manage.py collectstatic --no-input
+
+echo "🗄️ Applying migrations..."
+python manage.py migrate
+
+echo "🌐 Configuring Site domain..."
+python manage.py shell -c "
+from django.contrib.sites.models import Site
+site, _ = Site.objects.get_or_create(id=1)
+site.domain = 'hjmanager.site'
+site.name = 'HJ Manager'
+site.save()
+"
+
+echo "✅ Build completed successfully."
+```
+
+<Warning>
+Update the Site domain in `build.sh` to match your production domain for proper OAuth redirects.
+</Warning>
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] Set `DEBUG=False` in environment variables
+- [ ] Generate a strong `SECRET_KEY` (use `python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'`)
+- [ ] Configure `ALLOWED_HOSTS` with your domain
+- [ ] Set `CSRF_TRUSTED_ORIGINS` with your full URL (including `https://`)
+- [ ] Provision a PostgreSQL database and set `DATABASE_URL`
+- [ ] Configure Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
+- [ ] Set up email service (Resend API key)
+- [ ] Configure optional services (OpenAI, Twilio) if needed
+- [ ] Update Site domain in `build.sh` or via Django admin
+- [ ] Test all critical workflows (login, inventory operations, reports)
+- [ ] Set up database backups
+- [ ] Configure monitoring and error tracking
+
+## Post-Deployment
+
+### Create Superuser
+
+After first deployment, create an admin user:
+
+```bash
+python manage.py createsuperuser
+```
+
+### Verify Configuration
+
+1. Access `/admin/` and log in
+2. Navigate to **Sites** and verify the domain is correct
+3. Check **Social applications** for Google OAuth configuration
+4. Test user registration and login flows
+
+### Monitoring
+
+Monitor these metrics:
+- Application logs for errors
+- Database connection pool usage
+- Response times
+- Static file serving
+- Background job processing (if applicable)
+
+## Troubleshooting
+
+### Static files not loading
+- Run `python manage.py collectstatic --clear` to clear and rebuild
+- Verify `STATIC_ROOT` directory is writable
+- Check WhiteNoise is in `MIDDLEWARE` after `SecurityMiddleware`
+
+### Database connection errors
+- Verify `DATABASE_URL` format: `postgresql://user:password@host:port/dbname`
+- Check database server is accessible
+- Ensure `psycopg2-binary` is installed
+
+### OAuth redirect errors
+- Verify `CSRF_TRUSTED_ORIGINS` includes your domain with protocol
+- Check Site domain matches your deployment URL
+- Update Google OAuth authorized redirect URIs
+
+### 502 Bad Gateway
+- Check Gunicorn worker timeout (increase if needed)
+- Verify application is listening on correct port
+- Review application logs for startup errors

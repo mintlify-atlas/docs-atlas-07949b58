@@ -1,0 +1,310 @@
+---
+title: 'Suppliers API'
+description: 'Manage supplier records for purchase orders'
+---
+
+## Overview
+
+The Suppliers API manages supplier (proveedor) records for purchase order management.
+
+## Proveedor Model (Supplier)
+
+<ResponseField name="id" type="integer">
+  Unique supplier identifier (auto-generated)
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User (admin who created the supplier)
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Supplier contact name (max 100 characters, required)
+</ResponseField>
+
+<ResponseField name="empresa" type="string">
+  Company name (max 150 characters, required)
+</ResponseField>
+
+<ResponseField name="telefono" type="string">
+  Phone number (max 20 characters, required)
+</ResponseField>
+
+<ResponseField name="correo" type="email">
+  Email address (required)
+</ResponseField>
+
+<ResponseField name="direccion" type="string">
+  Physical address (max 200 characters, required)
+</ResponseField>
+
+<ResponseField name="fecha_registro" type="datetime">
+  Registration timestamp (auto-generated)
+</ResponseField>
+
+## List Suppliers
+
+<Note>
+  Requires authentication. Returns suppliers owned by the authenticated user (admin) or their creator (vendedor).
+</Note>
+
+```bash
+curl -X GET http://localhost:8000/proveedores/ \
+  -H "Cookie: sessionid=<your-session>"
+```
+
+### Response
+
+Returns rendered HTML template with list of suppliers sorted by name.
+
+## Create Supplier
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/proveedores/crear/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "nombre=Juan Martinez" \
+  -d "empresa=TechSupply S.A." \
+  -d "telefono=6012345678" \
+  -d "correo=contacto@techsupply.com" \
+  -d "direccion=Calle 100 #15-20, Bogota"
+```
+
+### Request Parameters
+
+<ParamField body="nombre" type="string" required>
+  Supplier contact name (max 100 characters)
+</ParamField>
+
+<ParamField body="empresa" type="string" required>
+  Company name (max 150 characters)
+</ParamField>
+
+<ParamField body="telefono" type="string" required>
+  Phone number (max 20 characters)
+</ParamField>
+
+<ParamField body="correo" type="email" required>
+  Valid email address
+</ParamField>
+
+<ParamField body="direccion" type="string" required>
+  Physical address (max 200 characters)
+</ParamField>
+
+### Response
+
+**Success (HTTP 302):**
+- Redirects to `/proveedores/`
+- Flash message: "Proveedor agregado correctamente."
+
+**Validation Error (HTTP 200):**
+- Re-renders form with error messages
+- Flash message: "Revisa los campos marcados en el formulario."
+
+**Permission Denied (HTTP 403):**
+- Redirects to error page (vendedor users cannot create suppliers)
+
+### Validation Rules
+
+- All fields are required
+- `correo` must be valid email format
+- `telefono` max 20 characters
+- `direccion` max 200 characters
+
+## Update Supplier
+
+<Warning>
+  Requires authentication and **admin role**. Only the supplier owner can update.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/proveedores/editar/<id>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "nombre=Juan Martinez" \
+  -d "empresa=TechSupply Colombia S.A." \
+  -d "telefono=6019876543" \
+  -d "correo=ventas@techsupply.com" \
+  -d "direccion=Calle 101 #16-30, Bogota"
+```
+
+### URL Parameters
+
+<ParamField path="id" type="integer" required>
+  Supplier ID to update
+</ParamField>
+
+### Request Parameters
+
+Same as [Create Supplier](#create-supplier) - all fields are editable.
+
+### Response
+
+**Success (HTTP 302):**
+- Redirects to `/proveedores/`
+- Flash message: "Proveedor actualizado correctamente."
+
+**Not Found (HTTP 404):**
+- Supplier doesn't exist or doesn't belong to authenticated user
+
+**Validation Error (HTTP 200):**
+- Re-renders form with error messages
+
+## Delete Supplier
+
+<Warning>
+  Requires authentication and **admin role**. Can delete suppliers even if referenced in purchases (SET_NULL constraint).
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/proveedores/eliminar/<id>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+### URL Parameters
+
+<ParamField path="id" type="integer" required>
+  Supplier ID to delete
+</ParamField>
+
+### Response
+
+**Success (HTTP 302):**
+- Supplier deleted
+- Associated purchases have `proveedor` field set to NULL
+- Redirects to `/proveedores/`
+- Flash message: "Proveedor eliminado correctamente."
+
+**Not Found (HTTP 404):**
+- Supplier doesn't exist or doesn't belong to user
+
+### GET Request
+
+Accessing the delete URL via GET shows confirmation page:
+
+```bash
+curl http://localhost:8000/proveedores/eliminar/<id>/
+```
+
+Renders confirmation template.
+
+## Business Logic
+
+### Relationship with Purchases
+
+Suppliers are linked to purchases via `SET_NULL` foreign key:
+
+```python
+proveedor = models.ForeignKey(
+    Proveedor,
+    on_delete=models.SET_NULL,  # Allows deletion
+    null=True,
+    blank=True
+)
+```
+
+When a supplier is deleted:
+- Purchase records are preserved
+- `proveedor` field set to `NULL`
+- Purchase history remains intact
+
+### Multi-Tenancy
+
+Suppliers are isolated per user:
+- Admin users see only their own suppliers
+- Vendedor users see suppliers owned by their `creado_por` admin
+- Enforced at database level: `usuario` foreign key
+- Enforced in views: `Proveedor.objects.filter(usuario=request.user)`
+
+### Ordering
+
+Suppliers are always returned sorted alphabetically by name:
+
+```python
+class Meta:
+    ordering = ['nombre']
+```
+
+## Example Workflow
+
+### Complete Supplier Management
+
+```bash
+# 1. Login as admin
+curl -c cookies.txt -X POST http://localhost:8000/login/ \
+  -d "username=admin&password=mypass"
+
+# 2. Create new supplier
+curl -b cookies.txt -X POST http://localhost:8000/proveedores/crear/ \
+  -H "X-CSRFToken: $(get_csrf_token)" \
+  -d "nombre=Ana Rodriguez" \
+  -d "empresa=OfficeMax Colombia" \
+  -d "telefono=3101234567" \
+  -d "correo=ana.rodriguez@officemax.co" \
+  -d "direccion=Carrera 7 #32-45, Bogota"
+
+# 3. View all suppliers
+curl -b cookies.txt http://localhost:8000/proveedores/
+
+# 4. Update supplier information
+curl -b cookies.txt -X POST http://localhost:8000/proveedores/editar/5/ \
+  -H "X-CSRFToken: $(get_csrf_token)" \
+  -d "telefono=3109876543"  # Update phone only
+
+# 5. Create purchase order with this supplier
+curl -b cookies.txt -X POST http://localhost:8000/compras/crear/ \
+  -H "X-CSRFToken: $(get_csrf_token)" \
+  -d "tipo=productos" \
+  -d "proveedor=5" \
+  -d "total=5000.00"
+
+# 6. Delete supplier (purchase proveedor field becomes NULL)
+curl -b cookies.txt -X POST http://localhost:8000/proveedores/eliminar/5/ \
+  -H "X-CSRFToken: $(get_csrf_token)"
+
+# Purchase record still exists but without supplier reference
+```
+
+### Supplier Data Export Example
+
+```bash
+# Get supplier list for export (requires custom view)
+curl -b cookies.txt http://localhost:8000/proveedores/ \
+  | grep -E '(nombre|empresa|telefono)' \
+  > suppliers_export.html
+```
+
+## Related Endpoints
+
+- [Purchases API](/api/purchases) - Create purchase orders with suppliers
+- See source: `applications/proveedores/models.py` and `applications/proveedores/views.py`
+  - Model definition: `/home/daytona/workspace/source/applications/proveedores/models.py`
+  - View logic: `/home/daytona/workspace/source/applications/proveedores/views.py`
+  - URL routing: `/home/daytona/workspace/source/applications/proveedores/urls.py`
+
+## Field Constraints Summary
+
+| Field | Type | Max Length | Required | Unique |
+|-------|------|------------|----------|--------|
+| nombre | string | 100 | Yes | No |
+| empresa | string | 150 | Yes | No |
+| telefono | string | 20 | Yes | No |
+| correo | email | 254 | Yes | No |
+| direccion | string | 200 | Yes | No |
+| usuario | foreign key | - | Yes | No |
+
+## Permission Matrix
+
+| Action | Admin | Vendedor |
+|--------|-------|----------|
+| List suppliers | Yes (own) | Yes (admin's) |
+| Create supplier | Yes | No |
+| Update supplier | Yes (own) | No |
+| Delete supplier | Yes (own) | No |
+| View in purchases | Yes | Read-only |

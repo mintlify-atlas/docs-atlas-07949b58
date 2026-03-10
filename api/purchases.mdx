@@ -1,0 +1,494 @@
+---
+title: 'Purchases API'
+description: 'Manage purchase orders and expenses'
+---
+
+## Overview
+
+The Purchases API handles two types of purchases:
+1. **Product purchases** - Inventory replenishment with automatic stock updates
+2. **Asset/furniture purchases** - Fixed assets and equipment
+
+Additionally manages general business expenses (Gastos).
+
+## Compra Model (Purchase)
+
+<ResponseField name="id" type="integer">
+  Unique purchase identifier (auto-generated)
+</ResponseField>
+
+<ResponseField name="proveedor" type="integer">
+  Foreign key to Proveedor (supplier, optional)
+</ResponseField>
+
+<ResponseField name="fecha" type="datetime">
+  Purchase timestamp (default: current time)
+</ResponseField>
+
+<ResponseField name="tipo" type="string">
+  Purchase type: `productos` or `activos`
+</ResponseField>
+
+<ResponseField name="total" type="decimal">
+  Total purchase amount (10 digits, 2 decimals, default: 0.00)
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User who created the purchase
+</ResponseField>
+
+## CompraDetalle Model (Purchase Detail)
+
+<ResponseField name="id" type="integer">
+  Detail line identifier
+</ResponseField>
+
+<ResponseField name="compra" type="integer">
+  Foreign key to parent Compra
+</ResponseField>
+
+<ResponseField name="producto" type="integer">
+  Foreign key to Producto (optional, null for new products)
+</ResponseField>
+
+<ResponseField name="categoria" type="string">
+  Product category (max 255 characters, optional)
+</ResponseField>
+
+<ResponseField name="cantidad" type="integer">
+  Quantity purchased (positive integer, default: 1)
+</ResponseField>
+
+<ResponseField name="precio" type="decimal">
+  Unit purchase price WITHOUT IVA (10 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="precio_con_iva" type="decimal">
+  Unit price WITH IVA (auto-calculated, default: 0.00)
+</ResponseField>
+
+<ResponseField name="subtotal_con_iva" type="decimal">
+  Line total with IVA (cantidad × precio_con_iva, default: 0.00)
+</ResponseField>
+
+<ResponseField name="precio_venta" type="decimal">
+  Selling price to set for this batch (10 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="tiene_caducidad" type="boolean">
+  Whether product has expiration date (default: false)
+</ResponseField>
+
+<ResponseField name="fecha_caducidad" type="date">
+  Expiration date (required if tiene_caducidad=true)
+</ResponseField>
+
+## Activo Model (Asset)
+
+<ResponseField name="id" type="integer">
+  Asset identifier
+</ResponseField>
+
+<ResponseField name="compra" type="integer">
+  OneToOne foreign key to Compra (tipo='activos')
+</ResponseField>
+
+<ResponseField name="nombre" type="string">
+  Asset name (max 255 characters)
+</ResponseField>
+
+<ResponseField name="descripcion" type="text">
+  Asset description (optional)
+</ResponseField>
+
+<ResponseField name="valor" type="decimal">
+  Asset value (10 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="fecha_adquisicion" type="date">
+  Acquisition date
+</ResponseField>
+
+## Gasto Model (Expense)
+
+<ResponseField name="id" type="integer">
+  Expense identifier
+</ResponseField>
+
+<ResponseField name="usuario" type="integer">
+  Foreign key to User
+</ResponseField>
+
+<ResponseField name="concepto" type="string">
+  Expense concept (max 150 characters)
+</ResponseField>
+
+<ResponseField name="descripcion" type="text">
+  Detailed description (optional)
+</ResponseField>
+
+<ResponseField name="monto" type="decimal">
+  Amount (12 digits, 2 decimals)
+</ResponseField>
+
+<ResponseField name="fecha" type="date">
+  Expense date (auto-set on creation)
+</ResponseField>
+
+## List Purchases
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X GET http://localhost:8000/compras/ \
+  -H "Cookie: sessionid=<your-session>"
+```
+
+### Response
+
+Returns rendered HTML with list of purchases for the authenticated user.
+
+## Create Purchase (Products)
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/compras/crear/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "tipo=productos" \
+  -d "proveedor=5" \
+  -d "total=5000.00"
+```
+
+### Request Parameters
+
+<ParamField body="tipo" type="string" required>
+  Purchase type: `productos` or `activos`
+</ParamField>
+
+<ParamField body="proveedor" type="integer">
+  Supplier ID (optional)
+</ParamField>
+
+<ParamField body="total" type="decimal" default="0.00">
+  Total amount (typically calculated from details)
+</ParamField>
+
+### Adding Purchase Details
+
+Details are added separately (typically via formset in web UI):
+
+```bash
+curl -X POST http://localhost:8000/compras/crear/ \
+  -d "producto=10" \
+  -d "cantidad=50" \
+  -d "precio=80.00" \
+  -d "precio_venta=100.00" \
+  -d "tiene_caducidad=true" \
+  -d "fecha_caducidad=2025-12-31"
+```
+
+<ParamField body="producto" type="integer">
+  Existing product ID (optional, can create new product)
+</ParamField>
+
+<ParamField body="categoria" type="string">
+  Product category for new products
+</ParamField>
+
+<ParamField body="cantidad" type="integer" required>
+  Quantity purchased
+</ParamField>
+
+<ParamField body="precio" type="decimal" required>
+  Unit price WITHOUT IVA
+</ParamField>
+
+<ParamField body="precio_venta" type="decimal" required>
+  Selling price to set for product
+</ParamField>
+
+<ParamField body="tiene_caducidad" type="boolean" default="false">
+  Whether product expires
+</ParamField>
+
+<ParamField body="fecha_caducidad" type="date">
+  Expiration date (YYYY-MM-DD format, required if tiene_caducidad=true)
+</ParamField>
+
+### Response
+
+**Success:** Redirects to purchase list with flash message
+
+### Business Logic on Purchase Creation
+
+1. **Stock Update**: `producto.stock += cantidad`
+2. **Price Update**: `producto.precio_compra = precio`
+3. **Selling Price**: `producto.precio = precio_venta`
+4. **IVA Calculation**: `precio_con_iva = precio * 1.19` (19% tax)
+5. **Subtotal**: `subtotal_con_iva = cantidad * precio_con_iva`
+
+## Create Purchase (Assets)
+
+```bash
+curl -X POST http://localhost:8000/compras/crear/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "tipo=activos" \
+  -d "proveedor=3" \
+  -d "total=15000.00" \
+  -d "nombre=Office Desk" \
+  -d "descripcion=Executive wooden desk" \
+  -d "valor=15000.00" \
+  -d "fecha_adquisicion=2024-03-15"
+```
+
+### Asset Parameters
+
+<ParamField body="nombre" type="string" required>
+  Asset name
+</ParamField>
+
+<ParamField body="descripcion" type="text">
+  Asset description
+</ParamField>
+
+<ParamField body="valor" type="decimal" required>
+  Asset value
+</ParamField>
+
+<ParamField body="fecha_adquisicion" type="date" required>
+  Acquisition date (YYYY-MM-DD)
+</ParamField>
+
+## View Purchase Detail
+
+```bash
+curl -X GET http://localhost:8000/compras/detalle/<pk>/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+<ParamField path="pk" type="integer" required>
+  Purchase ID
+</ParamField>
+
+### Response
+
+Returns rendered HTML with purchase details including all line items.
+
+## Delete Purchase
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/compras/eliminar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+<ParamField path="pk" type="integer" required>
+  Purchase ID to delete
+</ParamField>
+
+### Response
+
+**Success:** Purchase and related details/assets deleted, redirects to list
+
+<Note>
+  Deleting a purchase does NOT restore product stock. Consider carefully before deletion.
+</Note>
+
+## AJAX/API Endpoints
+
+### Get Product Data
+
+```bash
+curl -X POST http://localhost:8000/compras/ajax/obtener-producto-datos/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{"producto_id": 10}'
+```
+
+<ParamField body="producto_id" type="integer" required>
+  Product ID to fetch
+</ParamField>
+
+#### Response
+
+```json
+{
+  "success": true,
+  "producto": {
+    "id": 10,
+    "nombre": "Laptop Dell XPS 15",
+    "precio_compra": "1200.00",
+    "precio_venta": "1500.00",
+    "stock": 8,
+    "categoria": "Electronics"
+  }
+}
+```
+
+### Get Purchase Detail (AJAX)
+
+```bash
+curl -X GET http://localhost:8000/compras/api/detalle-compra/<compra_id>/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+<ParamField path="compra_id" type="integer" required>
+  Purchase ID
+</ParamField>
+
+#### Response
+
+```json
+{
+  "id": 12,
+  "proveedor": {
+    "id": 5,
+    "nombre": "TechSupply S.A.",
+    "empresa": "TechSupply"
+  },
+  "fecha": "2024-03-15T09:00:00-05:00",
+  "tipo": "productos",
+  "total": "5950.00",
+  "detalles": [
+    {
+      "producto": {
+        "id": 10,
+        "nombre": "Laptop Dell XPS 15"
+      },
+      "cantidad": 5,
+      "precio": "1000.00",
+      "precio_con_iva": "1190.00",
+      "subtotal_con_iva": "5950.00",
+      "precio_venta": "1500.00"
+    }
+  ]
+}
+```
+
+## Expenses (Gastos)
+
+### List Expenses
+
+```bash
+curl -X GET http://localhost:8000/compras/gastos/ \
+  -H "Cookie: sessionid=<session>"
+```
+
+### Create Expense
+
+<Warning>
+  Requires authentication and **admin role**.
+</Warning>
+
+```bash
+curl -X POST http://localhost:8000/compras/gastos/nuevo/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "concepto=Office Rent" \
+  -d "descripcion=Monthly rent payment" \
+  -d "monto=2500000.00"
+```
+
+<ParamField body="concepto" type="string" required>
+  Expense concept (max 150 characters)
+</ParamField>
+
+<ParamField body="descripcion" type="text">
+  Detailed description (optional)
+</ParamField>
+
+<ParamField body="monto" type="decimal" required>
+  Amount (e.g., "2500000.00")
+</ParamField>
+
+### Response
+
+**Success:** Expense created, redirects to expenses list
+
+### Update Expense
+
+```bash
+curl -X POST http://localhost:8000/compras/gastos/editar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>" \
+  -d "concepto=Office Rent (Updated)" \
+  -d "monto=2600000.00"
+```
+
+<ParamField path="pk" type="integer" required>
+  Expense ID to update
+</ParamField>
+
+### Delete Expense
+
+```bash
+curl -X POST http://localhost:8000/compras/gastos/eliminar/<pk>/ \
+  -H "Cookie: sessionid=<session>; csrftoken=<token>" \
+  -H "X-CSRFToken: <token>"
+```
+
+<ParamField path="pk" type="integer" required>
+  Expense ID to delete
+</ParamField>
+
+## Example Workflow
+
+### Complete Purchase Flow
+
+```bash
+# 1. Login as admin
+curl -c cookies.txt -X POST http://localhost:8000/login/ \
+  -d "username=admin&password=mypass"
+
+# 2. Get product data for purchase
+curl -b cookies.txt -X POST http://localhost:8000/compras/ajax/obtener-producto-datos/ \
+  -H "Content-Type: application/json" \
+  -H "X-CSRFToken: <token>" \
+  -d '{"producto_id": 10}'
+
+# Response shows current stock: 8
+
+# 3. Create purchase order
+curl -b cookies.txt -X POST http://localhost:8000/compras/crear/ \
+  -H "X-CSRFToken: <token>" \
+  -d "tipo=productos" \
+  -d "proveedor=5" \
+  -d "producto=10" \
+  -d "cantidad=20" \
+  -d "precio=1100.00" \
+  -d "precio_venta=1550.00"
+
+# Result:
+# - Stock updated: 8 + 20 = 28
+# - precio_compra updated: 1100.00
+# - precio (selling) updated: 1550.00
+# - Total: 20 × 1100.00 × 1.19 = 26,180.00
+
+# 4. View purchase detail
+curl -b cookies.txt http://localhost:8000/compras/detalle/12/
+
+# 5. Record business expense
+curl -b cookies.txt -X POST http://localhost:8000/compras/gastos/nuevo/ \
+  -H "X-CSRFToken: <token>" \
+  -d "concepto=Utilities" \
+  -d "monto=350000.00"
+```
+
+## Related Endpoints
+
+- [Products API](/api/products) - Stock updates from purchases
+- [Suppliers API](/api/suppliers) - Purchase order suppliers
+- See source: `applications/compras/models.py` and `applications/compras/views.py`

@@ -1,0 +1,531 @@
+---
+title: 'Profile Management'
+description: 'Manage user profiles, photos, and personal settings in Inventario'
+icon: 'user-pen'
+---
+
+## Overview
+
+Every user in Inventario has a customizable profile where they can manage personal information, upload photos, change passwords, and configure preferences like tutorial visibility.
+
+## User Profile Model
+
+User profiles are built into the `Usuario` model:
+
+<CodeGroup>
+```python applications/cuentas/models.py
+class Usuario(AbstractUser):
+    email = models.EmailField(
+        'email address',
+        unique=True,
+        blank=False,
+        null=False
+    )
+
+    rol = models.CharField(max_length=20, choices=ROLES, default='admin')
+    nombre = models.CharField(max_length=100, null=True, blank=True)
+    apellido = models.CharField(max_length=100, null=True, blank=True)
+    telefono = models.CharField(max_length=20, null=True, blank=True)
+
+    foto_perfil = models.ImageField(
+        upload_to='fotos_perfil/',
+        null=True,
+        blank=True
+    )
+
+    foto_google_url = models.URLField(max_length=500, null=True, blank=True)
+    tutorial_visto = models.BooleanField(default=False)
+    debe_cambiar_password = models.BooleanField(default=True)
+    email_verified = models.BooleanField(default=False)
+```
+</CodeGroup>
+
+<Info>
+The profile supports both uploaded photos and photos from Google OAuth authentication.
+</Info>
+
+## Profile View
+
+### Accessing Your Profile
+
+Users can view and edit their profile information at the profile page:
+
+```python applications/cuentas/views.py
+@login_required
+def perfil_usuario(request):
+    # Create invoice configuration if it doesn't exist
+    config, created = ConfiguracionFactura.objects.get_or_create(
+        usuario=request.user
+    )
+
+    perfil_form = PerfilUpdateForm(instance=request.user)
+
+    context = {
+        'user': request.user,
+        'form_factura': form_factura,
+        'perfil_form': perfil_form,
+    }
+
+    return render(request, 'perfil_usuario.html', context)
+```
+
+### Profile Information
+
+<CardGroup cols={2}>
+  <Card title="Basic Info" icon="address-card">
+    Username, first name, last name, and email
+  </Card>
+  
+  <Card title="Contact Details" icon="phone">
+    Phone number and verified email status
+  </Card>
+  
+  <Card title="Profile Photo" icon="camera">
+    Uploaded image or Google profile photo
+  </Card>
+  
+  <Card title="Role Badge" icon="shield">
+    Admin or Vendedor role display
+  </Card>
+</CardGroup>
+
+## Updating Profile Information
+
+### Profile Update Form
+
+The profile form validates and updates user information:
+
+<CodeGroup>
+```python applications/cuentas/forms.py
+class PerfilUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Usuario
+        fields = ['username', 'first_name', 'last_name', 'email']
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'username'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'given-name'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'family-name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'autocomplete': 'email'}),
+        }
+
+    def clean_username(self):
+        username = (self.cleaned_data.get('username') or '').strip()
+        if not username:
+            raise forms.ValidationError('El nombre de usuario es obligatorio.')
+
+        qs = Usuario.objects.filter(username__iexact=username)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError('Este nombre de usuario ya esta en uso.')
+        return username
+```
+</CodeGroup>
+
+### Form Validation
+
+The form includes comprehensive validation:
+
+<AccordionGroup>
+  <Accordion title="Username Validation">
+    - Cannot be empty
+    - Must be unique (case-insensitive)
+    - Excludes current user when checking for duplicates
+  </Accordion>
+  
+  <Accordion title="Email Validation">
+    ```python
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email:
+            raise forms.ValidationError('El correo electronico es obligatorio.')
+
+        qs = Usuario.objects.filter(email__iexact=email)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError('Este correo electronico ya esta registrado.')
+        return email
+    ```
+  </Accordion>
+  
+  <Accordion title="Name Validation">
+    ```python
+    def _validate_only_letters(self, value, label):
+        texto = (value or '').strip()
+        if not texto:
+            raise forms.ValidationError(f'El {label} es obligatorio.')
+        if not re.fullmatch(r"[A-Za-z\u00C0-\u017F\s]+", texto):
+            raise forms.ValidationError(f'El {label} solo puede contener letras.')
+        return re.sub(r'\s+', ' ', texto)
+    ```
+    Names must contain only letters (including accented characters) and spaces.
+  </Accordion>
+</AccordionGroup>
+
+### Update Profile Handler
+
+```python applications/cuentas/views.py
+@login_required
+def actualizar_perfil(request):
+    if request.method == "POST":
+        user = request.user
+        form = PerfilUpdateForm(request.POST, instance=user)
+
+        if not form.is_valid():
+            # Return to profile with errors
+            messages.error(request, 'Revisa los datos del perfil.')
+            return render(request, 'perfil_usuario.html', context)
+
+        user = form.save(commit=False)
+
+        # Handle photo upload
+        if 'foto_perfil' in request.FILES:
+            user.foto_perfil = request.FILES['foto_perfil']
+
+        user.save()
+        messages.success(request, 'Tu perfil se ha actualizado correctamente.')
+        return redirect('perfil_usuario')
+```
+
+<Note>
+The profile form automatically handles image uploads through Django's file handling system.
+</Note>
+
+## Profile Photo Management
+
+### Uploading Photos
+
+Users can upload custom profile photos:
+
+<Steps>
+  <Step title="Select Photo">
+    Choose an image file from your device.
+  </Step>
+  
+  <Step title="Automatic Upload">
+    The photo is saved to `media/fotos_perfil/` directory:
+    ```python
+    foto_perfil = models.ImageField(
+        upload_to='fotos_perfil/',
+        null=True,
+        blank=True
+    )
+    ```
+  </Step>
+  
+  <Step title="Display">
+    The uploaded photo is displayed throughout the application.
+  </Step>
+</Steps>
+
+### Google Profile Photos
+
+When users authenticate with Google OAuth, their profile photo is automatically captured:
+
+<CodeGroup>
+```python applications/cuentas/views.py
+def after_google_login(request):
+    if request.user.is_authenticated:
+        try:
+            social = SocialAccount.objects.get(user=request.user, provider='google')
+            foto_url = social.extra_data.get('picture')
+
+            if foto_url and not request.user.foto_perfil:
+                import requests as req
+                from django.core.files.base import ContentFile
+                import os
+
+                response = req.get(foto_url)
+                if response.status_code == 200:
+                    extension = 'jpg'
+                    nombre_archivo = f"google_{request.user.id}.{extension}"
+                    request.user.foto_perfil.save(
+                        nombre_archivo,
+                        ContentFile(response.content),
+                        save=True
+                    )
+        except SocialAccount.DoesNotExist:
+            pass
+```
+</CodeGroup>
+
+<Info>
+**Priority System**: Google photos are only saved if the user doesn't already have an uploaded profile photo. Users can override Google photos by uploading their own.
+</Info>
+
+### Photo Display Logic
+
+```python
+# In templates
+{% if user.foto_perfil %}
+    <img src="{{ user.foto_perfil.url }}" alt="Profile Photo">
+{% elif user.foto_google_url %}
+    <img src="{{ user.foto_google_url }}" alt="Google Profile Photo">
+{% else %}
+    <img src="/static/default-avatar.png" alt="Default Avatar">
+{% endif %}
+```
+
+## Password Management
+
+### Changing Password
+
+Users can change their password at any time:
+
+<CodeGroup>
+```python applications/cuentas/views.py
+@login_required
+def cambiar_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+
+            user.debe_cambiar_password = False
+            user.save()
+
+            messages.success(request, 'Contraseña actualizada correctamente.')
+            return redirect('perfil_usuario')
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'cuentas/cambiar_password.html', {'form': form})
+```
+</CodeGroup>
+
+<Steps>
+  <Step title="Verify Current Password">
+    User must enter their current password for security.
+  </Step>
+  
+  <Step title="Enter New Password">
+    New password must meet validation requirements:
+    - Minimum 8 characters
+    - Cannot be too common
+    - Must contain numbers and letters
+  </Step>
+  
+  <Step title="Confirm New Password">
+    Re-enter the new password to confirm.
+  </Step>
+  
+  <Step title="Update Session">
+    `update_session_auth_hash()` prevents logout after password change.
+  </Step>
+</Steps>
+
+### Forced Password Change
+
+New vendedor accounts are created with `debe_cambiar_password=True`:
+
+```python
+# Middleware checks this flag
+class ForzarCambioPasswordMiddleware:
+    def __call__(self, request):
+        if request.user.is_authenticated and request.user.debe_cambiar_password:
+            if request.path != '/cambiar-password/':
+                return redirect('cambiar_password')
+        # ... continue
+```
+
+<Warning>
+Users with `debe_cambiar_password=True` are automatically redirected to the password change page until they update their password.
+</Warning>
+
+## Tutorial Settings
+
+### First-Time Tutorial
+
+Inventario displays an interactive tutorial for new users:
+
+```python applications/cuentas/views.py
+@admin_required
+@login_required
+@no_cache
+def dashboard(request):
+    # Check if tutorial has been viewed
+    mostrar_tutorial = not request.user.tutorial_visto
+    if mostrar_tutorial:
+        request.user.tutorial_visto = True
+        request.user.save(update_fields=['tutorial_visto'])
+
+    context = {
+        # ...
+        "mostrar_tutorial": mostrar_tutorial,
+    }
+```
+
+### Tutorial Model Field
+
+```python applications/cuentas/models.py
+tutorial_visto = models.BooleanField(default=False)
+```
+
+<Info>
+The tutorial is automatically shown once when a user first accesses the dashboard. After viewing, `tutorial_visto` is set to `True` and the tutorial won't display again.
+</Info>
+
+### Marking Tutorial as Viewed
+
+Users can manually dismiss the tutorial:
+
+```python applications/cuentas/views.py
+@require_POST
+def marcar_tutorial_visto(request):
+    request.user.tutorial_visto = True
+    request.user.save(update_fields=['tutorial_visto'])
+    return JsonResponse({'ok': True})
+```
+
+<Tip>
+**Admin Feature**: Admins could potentially reset `tutorial_visto` to `False` to show the tutorial again to specific users.
+</Tip>
+
+## Invoice Configuration (Admin Only)
+
+Admins can configure invoice settings from their profile:
+
+<CodeGroup>
+```python applications/usuarios/models.py
+class ConfiguracionFactura(models.Model):
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='config_factura'
+    )
+
+    nombre_empresa = models.CharField(max_length=150, blank=True)
+    direccion = models.CharField(max_length=200, blank=True)
+    telefono = models.CharField(max_length=50, blank=True)
+    email_contacto = models.EmailField(blank=True)
+
+    mensaje_personalizado = models.TextField(blank=True)
+
+    mostrar_direccion = models.BooleanField(default=True)
+    mostrar_telefono = models.BooleanField(default=True)
+    mostrar_email = models.BooleanField(default=True)
+    mostrar_mensaje = models.BooleanField(default=True)
+```
+</CodeGroup>
+
+### Invoice Settings Access Control
+
+```python applications/cuentas/views.py
+if request.method == 'POST' and 'guardar_factura' in request.POST:
+    # Only admins can save invoice configuration
+    if request.user.rol != 'admin':
+        messages.error(request, 'No tienes permisos para modificar la configuración de factura.')
+        return redirect('perfil_usuario')
+    
+    form_factura = ConfiguracionFacturaForm(
+        request.POST,
+        instance=config
+    )
+    if form_factura.is_valid():
+        form_factura.save()
+```
+
+<Warning>
+Only users with the **Admin** role can modify invoice configuration settings. Vendedores cannot access these settings.
+</Warning>
+
+### Invoice Configuration Options
+
+<CardGroup cols={2}>
+  <Card title="Company Info" icon="building">
+    Business name, address, phone, and contact email
+  </Card>
+  
+  <Card title="Custom Message" icon="message">
+    Personalized message displayed on invoices
+  </Card>
+  
+  <Card title="Visibility Toggles" icon="eye">
+    Show/hide address, phone, email, and message on invoices
+  </Card>
+  
+  <Card title="Auto-Creation" icon="wand-magic-sparkles">
+    Configuration object is automatically created when first accessed
+  </Card>
+</CardGroup>
+
+## Email Verification Status
+
+The profile displays email verification status:
+
+```python applications/cuentas/models.py
+email_verified = models.BooleanField(default=False)
+```
+
+<Info>
+Email verification is completed during the registration process. Users cannot change their email verification status directly.
+</Info>
+
+## Profile Best Practices
+
+<AccordionGroup>
+  <Accordion title="Profile Photo Guidelines">
+    - Use clear, professional photos
+    - Recommended size: 400x400 pixels
+    - Supported formats: JPG, PNG, GIF
+    - Maximum file size depends on server configuration
+  </Accordion>
+  
+  <Accordion title="Security Recommendations">
+    - Change default passwords immediately
+    - Use strong, unique passwords
+    - Keep email address up to date
+    - Verify email addresses for password recovery
+  </Accordion>
+  
+  <Accordion title="Information Accuracy">
+    - Keep contact information current
+    - Use real names for better communication
+    - Update phone numbers if they change
+    - Ensure email addresses are monitored
+  </Accordion>
+</AccordionGroup>
+
+## API Endpoints
+
+<ResponseField name="GET /perfil/" type="View">
+  Display user profile and settings
+</ResponseField>
+
+<ResponseField name="POST /actualizar-perfil/" type="Update">
+  Update profile information and photo
+</ResponseField>
+
+<ResponseField name="GET /cambiar-password/" type="View">
+  Display password change form
+</ResponseField>
+
+<ResponseField name="POST /cambiar-password/" type="Update">
+  Process password change request
+</ResponseField>
+
+<ResponseField name="POST /marcar-tutorial-visto/" type="Update">
+  Mark tutorial as viewed (AJAX endpoint)
+</ResponseField>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/users/authentication">
+    Learn about login and password recovery
+  </Card>
+  
+  <Card title="User Roles" icon="user-shield" href="/users/roles">
+    Understand role-based permissions
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/admin/configuration">
+    System-wide configuration options
+  </Card>
+  
+  <Card title="Invoice Settings" icon="file-invoice" href="/features/sales">
+    Learn more about invoice generation
+  </Card>
+</CardGroup>

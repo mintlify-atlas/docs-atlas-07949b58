@@ -1,80 +1,310 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart Guide'
+description: 'Get started with Inventario in minutes - from account creation to your first sale'
+icon: 'rocket'
 ---
 
-## Get started in three steps
+## Welcome to Inventario
 
-Get your documentation site running locally and make your first customization.
+Inventario is a comprehensive inventory management system that helps you track products, manage sales, monitor stock levels, and generate insightful reports. This guide will walk you through getting started with your first successful sale.
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Create Your Account">
+    Navigate to the registration page and create your admin account.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Note>
+      Inventario supports **Google OAuth** for quick signup. You can either register with email/password or use your Google account for instant access.
+    </Note>
 
-### Step 2: Deploy your changes
+    **Registration Flow:**
+    1. Visit `/registro/` and fill in your details
+    2. Verify your email address (a confirmation link will be sent)
+    3. Wait for account activation by an administrator
+    4. Once activated, log in at `/login/`
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    **Account Roles:**
+    - **Admin**: Full access to all features including product management, reports, and vendor management
+    - **Vendedor**: Sales-focused access for processing transactions and viewing inventory
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```python
+    # User model from applications/cuentas/models.py
+    class Usuario(AbstractUser):
+        ROLES = [
+            ('admin', 'Administrador'),
+            ('vendedor', 'Vendedor'),
+        ]
+        rol = models.CharField(max_length=20, choices=ROLES, default='admin')
+        email = models.EmailField(unique=True)
+    ```
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Access Your Dashboard">
+    After logging in, admins are redirected to the dashboard at `/dashboard/`.
 
-### Step 3: Go live
+    The dashboard provides real-time insights:
+    - **Total sales** with VAT breakdown
+    - **Net profits** (sales - costs - expenses)
+    - **Daily sales chart** showing transactions by day of week
+    - **Top 5 products** by quantity sold
+    - **Category analysis** with visual charts
+    - **AI-powered insights** and recommendations
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    <Tip>
+      The first time you log in, you'll see an interactive tutorial overlay. Follow it to learn the key features quickly!
+    </Tip>
 
-## Next steps
+    **Dashboard Filters:**
+    - Today (7d)
+    - This month
+    - Specific month (via `?mes=YYYY-MM`)
+    - This year
 
-Now that you have your docs running, explore these key features:
+    ```python
+    # Example: Dashboard calculates net profit
+    # From applications/cuentas/views.py:471-472
+    ganancia_bruta = (total_ventas + total_ingresos_extras) - costo_productos
+    ganancia_neta = ganancia_bruta - total_gastos - total_activos
+    ```
+  </Step>
+
+  <Step title="Create Your First Product">
+    Navigate to **Products** → **Add Product** (`/productos/crear/`).
+
+    <Card title="Product Fields" icon="box">
+      - **Name**: Product identifier (min 2 characters, unique per user)
+      - **Category**: Optional classification (e.g., "Beverages", "Electronics")
+      - **Barcode**: Numeric code for scanner integration (optional but recommended)
+      - **Purchase Price**: Cost paid to supplier
+      - **Sale Price**: Price charged to customers (must be > purchase price)
+      - **Stock**: Initial quantity (can be 0)
+    </Card>
+
+    **Example Product Creation:**
+    ```python
+    # Model definition from applications/productos/models.py:5-51
+    class Producto(models.Model):
+        usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+        codigo_de_barras = models.CharField(max_length=50, blank=True, null=True)
+        nombre = models.CharField(max_length=100)
+        categoria = models.CharField(max_length=50, blank=True, null=True)
+        precio_compra = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+        precio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+        stock = models.PositiveIntegerField(default=0)
+        
+        class Meta:
+            unique_together = ('codigo_de_barras', 'usuario')
+    ```
+
+    <Warning>
+      **Validation Rules:**
+      - Sale price must be greater than purchase price
+      - Barcode must be numeric only
+      - Product names are unique per user (case-insensitive)
+    </Warning>
+
+    **Barcode Scanning:**
+    Products with barcodes can be quickly added to sales by scanning. The system searches by barcode:
+    ```python
+    # From applications/ventas/views.py:451-456
+    producto = Producto.objects.get(
+        codigo_de_barras=codigo, 
+        usuario=admin_owner
+    )
+    ```
+  </Step>
+
+  <Step title="Process Your First Sale">
+    Navigate to **Sales** → **New Sale** (`/ventas/nueva/`).
+
+    <CardGroup cols={2}>
+      <Card title="Quick Sale" icon="bolt">
+        For walk-in customers without registered profiles
+        - Enter customer name (optional)
+        - Select payment method (Cash/Transfer)
+        - Add products to cart
+      </Card>
+
+      <Card title="Registered Client" icon="user">
+        For repeat customers with profiles
+        - Search by name/phone/document
+        - Auto-fill customer details
+        - Track purchase history
+      </Card>
+    </CardGroup>
+
+    **Sale Process:**
+
+    1. **Select Products**
+       - Search by name or scan barcode
+       - System validates stock availability
+       - Add multiple items to cart
+
+    2. **Review Pricing with VAT**
+       ```python
+       # VAT calculation from applications/ventas/models.py:9-10
+       IVA_RATE = Decimal('0.19')  # 19% VAT
+       
+       # From applications/ventas/models.py:95-98
+       base = Decimal(self.precio_unitario)
+       self.monto_iva = (base * IVA_RATE).quantize(Decimal('0.01'))
+       self.precio_unitario_final = (base + self.monto_iva).quantize(Decimal('0.01'))
+       self.subtotal = self.cantidad * self.precio_unitario_final
+       ```
+
+       **Pricing Breakdown:**
+       - Base price: Your product's sale price
+       - VAT (19%): Automatically calculated per unit
+       - Final price: Base + VAT
+       - Subtotal: Final price × quantity
+
+    3. **Choose Payment Method**
+       - **Efectivo** (Cash)
+       - **Transferencia** (Bank Transfer) - requires bank name and reference number
+
+    4. **Complete Sale**
+       - Stock is automatically deducted
+       - Total includes VAT
+       - Transaction is recorded with timestamp
+
+    <Note>
+      **Stock Validation:**
+      The system uses database-level locking to prevent overselling:
+      ```python
+      # From applications/ventas/views.py:110
+      producto = Producto.objects.select_for_update().get(id=producto_id)
+      ```
+      If insufficient stock exists, the sale is rejected before any changes are made.
+    </Note>
+
+    **Low Stock Alerts:**
+    After completing a sale, you'll receive warnings if:
+    - Product stock reaches 0
+    - Product stock falls below threshold (default: 5 units)
+
+    ```javascript
+    // Alert structure returned after sale
+    {
+      "success": true,
+      "venta_id": 123,
+      "stock_cero_warnings": ["Product A", "Product B"],
+      "stock_bajo_warnings": [
+        {"nombre": "Product C", "stock_restante": 3}
+      ]
+    }
+    ```
+  </Step>
+
+  <Step title="View Your Results">
+    **Sales History:**
+    Navigate to **Sales** → **View Sales** (`/ventas/lista/`) to see all transactions.
+
+    Features:
+    - Paginated list (7 items per page)
+    - Combined view of sales and extra income (services, delivery fees)
+    - Click any sale to view detailed breakdown
+    - Edit or delete sales (admin only)
+
+    **Dashboard Analytics:**
+    Return to the dashboard to see updated metrics:
+    - Real-time sales totals
+    - Profit calculations (gross and net)
+    - Best-selling products
+    - Sales by category
+    - Day-of-week patterns
+
+    <Tip>
+      **Generate Reports:**
+      - Navigate to **Reports** to access detailed analytics
+      - Export data for accounting
+      - View inventory status
+      - Analyze purchases by supplier
+    </Tip>
+  </Step>
+</Steps>
+
+## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Manage Clients" icon="users" href="/features/clients">
+    Create customer profiles for faster checkout and purchase history tracking
+  </Card>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+  <Card title="Add Suppliers" icon="truck" href="/features/suppliers">
+    Register suppliers to track purchases and manage reorder points
+  </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+  <Card title="Generate Reports" icon="chart-bar" href="/features/reports">
+    Access detailed sales, inventory, and financial reports
+  </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Manage Users" icon="user-tie" href="/users/roles">
+    Create user accounts for your team members (admin only)
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common Workflows
+
+### Barcode Scanning Workflow
+
+1. Ensure products have numeric barcodes assigned
+2. On the **New Sale** page, focus the barcode input field
+3. Scan the product barcode
+4. Product is automatically added to cart with correct pricing
+5. Adjust quantity if needed
+6. Continue scanning additional items
+
+### End-of-Day Reconciliation
+
+1. View **Sales List** and filter by today's date
+2. Check the dashboard for "Today" period
+3. Review total sales by payment method
+4. Compare with physical cash/bank deposits
+5. Record any extra income (delivery fees, services)
+
+### Stock Replenishment
+
+1. Check dashboard alerts for low stock items
+2. Navigate to **Products** and filter by low stock
+3. Create purchase orders with suppliers
+4. Update stock levels when inventory arrives
+5. System tracks purchase price for profit calculations
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Sale rejected due to insufficient stock">
+    The system prevents overselling by validating stock before completing transactions.
+    
+    **Solution:**
+    1. Check current stock level in **Products** list
+    2. Update stock if inventory count was incorrect
+    3. Or reduce quantity in the sale
+  </Accordion>
+
+  <Accordion title="Barcode not found">
+    When scanning a barcode, you see "Product not found."
+    
+    **Solution:**
+    1. Verify the barcode is correctly entered in the product record
+    2. Check that barcode contains only numbers
+    3. Ensure the product belongs to your account (not another user)
+  </Accordion>
+
+  <Accordion title="Cannot edit sale price during product creation">
+    The sale price field is hidden when creating new products.
+    
+    **Solution:**
+    This is intentional. First create the product with purchase price and stock, then edit it to add the sale price. This prevents accidental sales before proper pricing is set.
+  </Accordion>
+
+  <Accordion title="Google OAuth login cancelled">
+    You cancelled the Google sign-in flow.
+    
+    **Solution:**
+    Click "Sign in with Google" again and select "Continue" when Google requests permissions. The app needs basic profile and email access to create your account.
+  </Accordion>
+</AccordionGroup>
+
+## Support
+
+Need help? Contact the support team through the **Help** section in the navigation menu.

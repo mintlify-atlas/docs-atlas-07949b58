@@ -1,0 +1,233 @@
+---
+title: 'Product Management'
+description: 'Manage your product catalog with barcode scanning, categories, and real-time stock tracking'
+icon: 'box'
+---
+
+## Overview
+
+The Product Management feature allows you to maintain a complete inventory catalog with automatic stock tracking, category organization, and barcode support for quick lookups during sales.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Barcode Support" icon="barcode">
+    Scan or enter barcode numbers for quick product identification during sales
+  </Card>
+  <Card title="Category Organization" icon="folder-tree">
+    Organize products by category for easy filtering and reporting
+  </Card>
+  <Card title="Real-time Stock" icon="chart-line">
+    Automatic stock updates with every sale and purchase
+  </Card>
+  <Card title="Pricing Control" icon="dollar-sign">
+    Track both purchase cost and selling price for each product
+  </Card>
+</CardGroup>
+
+## Product Information
+
+Each product in your inventory contains:
+
+- **Product Name**: Descriptive name for easy identification
+- **Barcode**: Optional barcode for scanner integration (unique per user)
+- **Category**: Organize products into custom categories
+- **Purchase Price**: Cost price paid to suppliers
+- **Selling Price**: Price charged to customers
+- **Current Stock**: Real-time inventory level
+- **Creation Date**: When the product was added to the system
+
+## How to Add Products
+
+<Steps>
+  <Step title="Navigate to Products">
+    From the main menu, click on **Products** to access your inventory
+  </Step>
+  <Step title="Click Add Product">
+    Click the **Add Product** button (Admin only)
+  </Step>
+  <Step title="Enter Product Details">
+    Fill in the product information:
+    - Product name (required)
+    - Barcode (optional)
+    - Category
+    - Purchase price
+    - Selling price
+    - Initial stock quantity
+  </Step>
+  <Step title="Save Product">
+    Click **Save** to add the product to your catalog
+  </Step>
+</Steps>
+
+<Note>
+  Only Admin users can add, edit, or delete products. Sellers can view products to create sales.
+</Note>
+
+## Managing Products
+
+### Viewing Products
+
+The product list displays all your inventory with:
+- Product name and current stock level
+- Category and pricing information
+- Quick actions for editing or deleting
+- Pagination (7 products per page)
+
+### Filtering by Category
+
+Use the category filter dropdown to view only products in a specific category. This is helpful when you have a large catalog organized by product types.
+
+### Sorting Options
+
+Sort your products by:
+- **Name** (alphabetical)
+- **Stock level** (low to high or high to low)
+- **Price**
+- **Date added**
+
+### Editing Products
+
+<Steps>
+  <Step title="Select Product">
+    Click the **Edit** button next to the product you want to modify
+  </Step>
+  <Step title="Update Information">
+    Change any product details including name, prices, or category
+  </Step>
+  <Step title="Save Changes">
+    Click **Save** to update the product
+  </Step>
+</Steps>
+
+<Warning>
+  Editing a product's purchase price does not affect existing sales records. Only new sales will use the updated price.
+</Warning>
+
+### Deleting Products
+
+To remove a product from your inventory:
+
+1. Click the **Delete** button next to the product
+2. Confirm the deletion
+
+<Warning>
+  You cannot delete products that have been sold. The system will show an error message indicating related sales must be deleted first.
+</Warning>
+
+## Barcode Scanning
+
+Inventario supports barcode scanning for fast product lookup during sales:
+
+### Setting Up Barcodes
+
+1. When adding or editing a product, enter the barcode number in the **Barcode** field
+2. Barcodes are unique per user/admin account
+3. You can use standard barcode formats (EAN-13, UPC, etc.)
+
+### Using Barcodes in Sales
+
+During the sales process:
+- Connect a USB barcode scanner to your device
+- Focus on the barcode field in the sales form
+- Scan the product barcode
+- The system automatically finds and adds the product to the sale
+
+<Tip>
+  If you don't have a barcode scanner, you can manually type the barcode number in the search field.
+</Tip>
+
+## Stock Management
+
+### Automatic Stock Updates
+
+Inventario automatically adjusts stock levels when:
+
+- **Sales are created**: Stock decreases by the quantity sold
+- **Sales are edited**: Stock adjusts based on the difference
+- **Sales are deleted**: Stock is restored
+- **Purchases are recorded**: Stock increases by the quantity purchased
+- **Purchases are deleted**: Stock decreases accordingly
+- **Returns are processed**: Stock is restored for returned items
+
+### Low Stock Alerts
+
+The system monitors stock levels and alerts you when:
+- Products reach zero stock
+- Products fall below the low stock threshold (default: 5 units)
+
+<Note>
+  Low stock warnings appear immediately after completing a sale that brings inventory below the threshold.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Organize with Categories">
+    Create meaningful categories that match your business:
+    - Electronics
+    - Groceries
+    - Beverages
+    - Office Supplies
+    
+    This makes filtering and reporting much easier.
+  </Accordion>
+  
+  <Accordion title="Use Barcodes When Possible">
+    Barcodes speed up the sales process significantly. Even if you only add barcodes to your best-selling items, it will improve efficiency.
+  </Accordion>
+  
+  <Accordion title="Keep Prices Updated">
+    Regularly review and update your selling prices based on:
+    - Changes in purchase costs
+    - Market conditions
+    - Competitor pricing
+  </Accordion>
+  
+  <Accordion title="Monitor Stock Levels">
+    Check your inventory regularly and reorder products before they run out. Use the inventory report to identify products that need restocking.
+  </Accordion>
+  
+  <Accordion title="Clean Up Discontinued Products">
+    If a product is no longer sold and has no sales history, you can delete it to keep your catalog clean and organized.
+  </Accordion>
+</AccordionGroup>
+
+## Tips for Success
+
+- **Start Simple**: Begin with your most popular products and expand your catalog gradually
+- **Consistent Naming**: Use clear, consistent names so products are easy to find
+- **Regular Audits**: Periodically verify physical stock matches system records
+- **Category Strategy**: Don't create too many categories - keep it manageable
+- **Price Strategy**: Ensure your selling price covers costs and desired profit margin
+
+## Troubleshooting
+
+### Product Not Found by Barcode
+
+- Verify the barcode is entered correctly in the product details
+- Check that the barcode scanner is working properly
+- Ensure the barcode belongs to a product owned by your account
+
+### Cannot Delete Product
+
+If you see an error when trying to delete a product, it means the product has sales associated with it. You have two options:
+1. Keep the product in your catalog (recommended)
+2. Delete all associated sales first (not recommended)
+
+### Stock Count Doesn't Match
+
+If your physical stock doesn't match the system:
+1. Review recent sales and purchases
+2. Check for any deleted or edited transactions
+3. Manually adjust the stock level by editing the product
+
+<Tip>
+  For significant stock adjustments, document the reason in your records for future reference.
+</Tip>
+
+## Related Features
+
+- [Sales](/features/sales) - Learn how products are sold and stock is decremented
+- [Purchases](/features/purchases) - Understand how purchases increase product stock
+- [Reports](/features/reports) - View inventory reports and low stock alerts

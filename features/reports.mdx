@@ -1,0 +1,482 @@
+---
+title: 'Reports & Analytics'
+description: 'Comprehensive business intelligence with sales, inventory, purchases, and profitability reports'
+icon: 'chart-line'
+---
+
+## Overview
+
+Inventario provides powerful reporting and analytics tools to help you understand your business performance. From sales trends to inventory levels to profit margins, you get complete visibility into your operations.
+
+## Available Reports
+
+<CardGroup cols={2}>
+  <Card title="Sales Reports" icon="cash-register">
+    Track sales performance, trends, and seller activity
+  </Card>
+  <Card title="Inventory Reports" icon="boxes">
+    Monitor stock levels, low inventory, and product categories
+  </Card>
+  <Card title="Purchase Reports" icon="truck">
+    Analyze spending by supplier, category, and time period
+  </Card>
+  <Card title="Profit Reports" icon="chart-pie">
+    Calculate profitability with cost analysis and margin tracking
+  </Card>
+</CardGroup>
+
+## Sales Reports
+
+### Monthly Sales Performance
+
+View sales performance across the entire year:
+
+**Report Shows:**
+- Sales count by month
+- Total revenue by month
+- Cumulative year-to-date totals
+- Progress toward monthly goals
+- Visual performance charts
+
+**How to Access:**
+1. Navigate to **Reports > Sales Report**
+2. View the monthly breakdown
+3. See total revenue for the year
+
+<Info>
+  The system automatically displays data for the current year. Months without sales show zero.
+</Info>
+
+### Sales by User
+
+For admins managing multiple sellers:
+
+**Report Shows:**
+- Sales by each seller
+- Individual seller performance
+- Revenue attributed to each user
+- Comparison between sellers
+
+**How to Filter:**
+1. Select specific user from dropdown
+2. Or view "All Users" for combined report
+3. Choose time period (daily, weekly, monthly, all time)
+
+### Sales by Period
+
+Generate focused reports for specific timeframes:
+
+**Available Periods:**
+- **Today**: Current day's sales
+- **This Week**: Monday through Sunday
+- **This Month**: Current month
+- **All Time**: Complete sales history
+
+**Report Includes:**
+- Customer names
+- Products sold
+- Sale amounts
+- Payment methods
+- Seller information
+
+### PDF Export
+
+Export any sales report to PDF:
+
+<Steps>
+  <Step title="Configure Report">
+    Set filters for user and time period
+  </Step>
+  <Step title="Click Generate PDF">
+    Click the **Download PDF** button
+  </Step>
+  <Step title="View or Print">
+    The PDF opens in your browser for viewing, printing, or saving
+  </Step>
+</Steps>
+
+**PDF Contents:**
+- Report header with period and user
+- Sale-by-sale breakdown
+- Total revenue calculation
+- Professional formatting
+
+## Inventory Reports
+
+### Complete Inventory Report
+
+View your entire product catalog:
+
+**Report Shows:**
+- All products in your inventory
+- Current stock levels
+- Product categories
+- Selling prices
+- Stock status (Available/Low Stock)
+
+**Access:** Navigate to **Reports > Inventory Report**
+
+### Low Stock Alert
+
+Identify products that need reordering:
+
+**Criteria:**
+- Products with 5 or fewer units in stock
+- Products with zero stock
+- Highlighted in the report
+
+<Warning>
+  Products showing "Low Stock" or "Out of Stock" need immediate attention to prevent lost sales.
+</Warning>
+
+### Filter by Category
+
+View inventory for specific product categories:
+
+1. Click **Filter by Category**
+2. Select the category from dropdown
+3. Report updates to show only that category
+4. Export to PDF if needed
+
+**Use Cases:**
+- Check stock for a product line
+- Prepare category-specific orders
+- Audit specific inventory sections
+
+### Inventory PDF Export
+
+Generate printable inventory reports:
+
+<Steps>
+  <Step title="Set Category Filter">
+    Choose a specific category or "All Categories"
+  </Step>
+  <Step title="Generate PDF">
+    Click **Download PDF**
+  </Step>
+  <Step title="Use Report">
+    Print for physical inventory counts or supplier orders
+  </Step>
+</Steps>
+
+## Purchase Reports
+
+### Total Spent by Month
+
+Track monthly purchase spending:
+
+**Report Shows:**
+- Month-by-month spending breakdown
+- Total spent in each month
+- Annual spending total
+- Spending trends over time
+
+**Includes:**
+- Product purchases (with IVA)
+- Asset purchases
+- All purchases by the logged-in user
+
+**Access:** **Reports > Purchases > Monthly Spending**
+
+### Spending by Supplier
+
+Analyze which suppliers you buy from most:
+
+**Report Shows:**
+- Total purchased from each supplier
+- Supplier ranking by spending
+- Number of purchases per supplier
+- Percentage of total spending
+
+**Use Cases:**
+- Negotiate volume discounts
+- Identify primary vendors
+- Diversify supplier base
+- Review supplier relationships
+
+**Access:** **Reports > Purchases > By Supplier**
+
+### Purchases by Category
+
+See spending broken down by product category:
+
+**Report Shows:**
+- Total spent per product category
+- Units purchased per category
+- Category ranking by investment
+- Percentage breakdown
+
+**Use Cases:**
+- Understand inventory investment
+- Plan category budgets
+- Identify overstocked categories
+- Balance inventory mix
+
+**Access:** **Reports > Purchases > By Category**
+
+### Purchase Report PDFs
+
+All purchase reports can be exported to PDF:
+- Click **Download PDF** on any purchase report
+- Professional formatting with totals
+- Include report generation date and user
+- Suitable for accounting and analysis
+
+## Expense Reports
+
+Track business expenses beyond inventory:
+
+### Expense Overview
+
+**Report Shows:**
+- All recorded expenses
+- Expense dates
+- Expense categories/concepts
+- Individual amounts
+- Total expenses
+
+### Filter by Date Range
+
+Narrow expense reports to specific periods:
+
+<Steps>
+  <Step title="Select Start Date">
+    Choose the beginning of your date range
+  </Step>
+  <Step title="Select End Date">
+    Choose the end of your date range
+  </Step>
+  <Step title="Apply Filter">
+    Click **Filter** to update the report
+  </Step>
+</Steps>
+
+### Expense PDF Export
+
+Generate printable expense reports:
+- Shows all expenses in date range
+- Includes expense details and amounts
+- Calculates total expenses
+- Professional formatting for accounting
+
+**Access:** **Reports > Expenses**
+
+## Profit & Loss Reports
+
+### Profitability Analysis
+
+The most comprehensive report showing true business profitability:
+
+**Report Calculates:**
+
+**Income:**
+- Total sales revenue (including IVA)
+- Extra income (deliveries, services, etc.)
+- Combined total income
+
+**Costs:**
+- Product cost basis (what you paid)
+- Purchase expenses
+- Operating expenses
+- Asset purchases
+
+**Profit:**
+- Gross profit (income minus costs)
+- Profit margin percentage
+- Net profit after all expenses
+
+### Understanding Profit Calculations
+
+<AccordionGroup>
+  <Accordion title="How Cost is Calculated">
+    For each product sold, the system uses the purchase cost recorded when the item was bought:
+    - Product purchase cost × quantity sold
+    - Summed across all sales
+    - This is your Cost of Goods Sold (COGS)
+  </Accordion>
+  
+  <Accordion title="How Income is Calculated">
+    Total income includes:
+    - All sales revenue (price customers paid)
+    - Extra income entries (deliveries, services)
+    - Does not include returns or refunds
+  </Accordion>
+  
+  <Accordion title="How Expenses are Applied">
+    Total expenses include:
+    - Operating expenses (rent, utilities, salaries)
+    - Asset purchases (equipment, furniture)
+    - Does not include product purchases (those are COGS)
+  </Accordion>
+  
+  <Accordion title="Final Profit Calculation">
+    Net Profit = (Total Sales + Extra Income) - (Product Costs) - (Expenses) - (Asset Purchases)
+  </Accordion>
+</AccordionGroup>
+
+### Profit Report by Period
+
+Filter profit reports to specific date ranges:
+
+<Steps>
+  <Step title="Select Start Date">
+    Choose beginning of analysis period
+  </Step>
+  <Step title="Select End Date">
+    Choose end of analysis period
+  </Step>
+  <Step title="Generate Report">
+    Click **Apply** to calculate profitability for that period
+  </Step>
+</Steps>
+
+**Common Periods:**
+- Daily (today only)
+- Weekly (current week)
+- Monthly (current month)
+- Quarterly (3 months)
+- Yearly (12 months)
+- Custom date ranges
+
+### Daily Profit Trends
+
+The profit report includes a daily breakdown:
+
+- Profit margin per day
+- Visual chart of daily performance
+- Identify best and worst days
+- Spot trends and patterns
+
+<Tip>
+  Use daily trends to identify optimal business days, seasonal patterns, and the impact of promotions.
+</Tip>
+
+### Profit Report PDF Export
+
+Export comprehensive profit analysis:
+
+<Steps>
+  <Step title="Configure Date Range">
+    Set the period for analysis
+  </Step>
+  <Step title="Generate PDF">
+    Click **Download PDF**
+  </Step>
+  <Step title="Review Report">
+    PDF includes all income, costs, and profit calculations
+  </Step>
+</Steps>
+
+**Access:** **Reports > Profitability**
+
+## Report Best Practices
+
+<AccordionGroup>
+  <Accordion title="Review Reports Regularly">
+    Make reporting part of your routine:
+    - **Daily**: Check today's sales and low stock
+    - **Weekly**: Review seller performance and profit trends
+    - **Monthly**: Analyze comprehensive reports and plan purchasing
+    - **Quarterly**: Evaluate supplier relationships and category performance
+  </Accordion>
+  
+  <Accordion title="Use Reports for Decision Making">
+    Let data guide your business decisions:
+    - Reorder products based on inventory reports
+    - Identify best-selling items from sales reports
+    - Negotiate with high-volume suppliers
+    - Adjust prices based on profit margins
+    - Plan promotions during slow periods
+  </Accordion>
+  
+  <Accordion title="Export for Record Keeping">
+    Maintain proper business records:
+    - Export monthly sales reports for accounting
+    - Save annual profit reports for taxes
+    - Keep purchase reports for expense tracking
+    - Archive inventory reports for audits
+  </Accordion>
+  
+  <Accordion title="Compare Time Periods">
+    Track growth and trends:
+    - Compare this month to last month
+    - Year-over-year comparisons
+    - Identify seasonal patterns
+    - Measure improvement initiatives
+  </Accordion>
+  
+  <Accordion title="Share with Stakeholders">
+    Use reports for communication:
+    - Share sales reports with sellers
+    - Provide profit reports to partners/investors
+    - Use inventory reports for supplier discussions
+    - Present expense reports to accountants
+  </Accordion>
+</AccordionGroup>
+
+## Multi-User Reporting
+
+### Admin View
+
+Admins see comprehensive data:
+- Their own transactions
+- All seller transactions under them
+- Combined totals and analytics
+- Individual seller breakdowns
+
+### Seller View
+
+Sellers see limited data:
+- Only their own sales
+- Their daily totals
+- Cannot view other sellers' data
+- No access to expense or purchase reports
+
+<Note>
+  This permissions structure ensures sellers can track their performance while admins maintain complete oversight.
+</Note>
+
+## Troubleshooting
+
+### Report Shows Zero/No Data
+
+If a report appears empty:
+1. Verify you have data in that category (sales, purchases, etc.)
+2. Check date range filters aren't too restrictive
+3. Ensure you're logged in with correct permissions
+4. Try refreshing the page
+
+### PDF Won't Generate
+
+If PDF export fails:
+1. Check your browser allows popups
+2. Try a different browser
+3. Verify report has data to export
+4. Check your internet connection
+
+### Numbers Don't Match Expectations
+
+If report totals seem incorrect:
+1. Remember sales prices include 19% IVA
+2. Check that all transactions are recorded
+3. Verify date ranges match your expectations
+4. Review individual transaction details
+5. Ensure no transactions were deleted
+
+### Low Stock Alert Missing Products
+
+If you expect more products in low stock report:
+1. Verify stock levels in product list
+2. Check threshold is set to 5 units
+3. Confirm products haven't been deleted
+4. Refresh the report page
+
+<Tip>
+  When in doubt, drill down into individual transactions to verify report calculations.
+</Tip>
+
+## Related Features
+
+- [Sales](/features/sales) - Data source for sales reports
+- [Products](/features/products) - Data source for inventory reports
+- [Purchases](/features/purchases) - Data source for purchase and expense reports
